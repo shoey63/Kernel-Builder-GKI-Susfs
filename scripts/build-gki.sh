@@ -19,23 +19,37 @@ echo "Restoring the custom pixel9-susfs branch..."
 cd KernelSU-Next
 git checkout pixel9-susfs-gki-android14-6.1
 
+# --- THE VERSION FIX ---
+echo "Grabbing Git info for KSU manager..."
+KSU_TAG=$(git describe --abbrev=0 --tags 2>/dev/null || echo "v1.0.0")
+KSU_HASH=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+
 # --- HARD DEBUG TRAP ---
-echo "Verifying Git state..."
 CURRENT_BRANCH=$(git branch --show-current)
 if [ "$CURRENT_BRANCH" != "pixel9-susfs-gki-android14-6.1" ]; then
     echo "CRITICAL ERROR: KernelSU-Next branch hijack detected!"
-    echo "Currently on branch: $CURRENT_BRANCH"
-    echo "Current commit:"
-    git log -1
     exit 1
 fi
-echo "Git branch verified: $CURRENT_BRANCH. Proceeding."
 cd ..
 
-# Replace symlink with hard copy to bypass Bazel sandbox issues
 echo "Replacing KSU symlink with a hard copy for the Bazel sandbox..."
 rm -f common/drivers/kernelsu
 cp -r KernelSU-Next/kernel common/drivers/kernelsu
+
+# --- THE UAPI FIX ---
+echo "Hunting down missing uapi headers..."
+UAPI_DIR=$(find KernelSU-Next -type d -name "uapi" | head -n 1)
+if [ -n "$UAPI_DIR" ]; then
+    echo "Found uapi at $UAPI_DIR, injecting into sandbox sightlines..."
+    cp -r "$UAPI_DIR" common/drivers/kernelsu/
+    cp -r "$UAPI_DIR" common/drivers/
+else
+    echo "WARNING: Could not find uapi folder in KernelSU-Next!"
+fi
+
+echo "Injecting KSU Git versions to silence Kbuild warnings..."
+sed -i "1i KSU_GIT_VERSION := $KSU_HASH" common/drivers/kernelsu/Kbuild
+sed -i "1i KSU_VERSION_TAG := $KSU_TAG" common/drivers/kernelsu/Kbuild
 
 # Strip config constraints
 sed -i '/default [yn]/d' common/drivers/kernelsu/Kconfig || true
@@ -60,7 +74,6 @@ if ! grep -q 'susfs_def.h' fs/namespace.c; then
 ' fs/namespace.c
 fi
 
-# THE FIX: Look for the specific DEFINE_IDA declaration, not just the name!
 if ! grep -q 'DEFINE_IDA(susfs_mnt_id_ida)' fs/namespace.c; then
   echo "Applying manual fs/namespace.c SUSFS mount declarations fix..."
   sed -i '/#include "internal.h"/a\
@@ -76,6 +89,17 @@ static DEFINE_IDA(susfs_mnt_group_ida);\
 fi
 rm -f fs/namespace.c.rej
 cd ..
+
+echo "======================================================="
+echo "=== SUSFS / KSU INJECTION AUDIT (PRE-BUILD CHECK) ==="
+echo "======================================================="
+echo "--> 1. Verifying manual Hunk #1 injection in fs/namespace.c:"
+grep -A 5 -B 2 "static DEFINE_IDA(susfs_mnt_id_ida);" common/fs/namespace.c
+echo -e "\n--> 2. Verifying forced KSU configurations:"
+grep -A 2 "config KSU_SUSFS$" common/drivers/kernelsu/Kconfig
+echo -e "\n--> 3. Checking uapi header injection:"
+ls -l common/drivers/kernelsu/uapi | head -n 3
+echo "======================================================="
 
 echo "=== Building GKI via Kleaf (Bazel) ==="
 tools/bazel run --color=no --curses=no //common:kernel_aarch64_dist -- --dist_dir="${DIST_DIR}" 2>&1 | tee build.log
