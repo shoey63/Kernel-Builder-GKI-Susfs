@@ -90,6 +90,10 @@ fi
 rm -f fs/namespace.c.rej
 cd ..
 
+# --- UPSTREAM BUG FIX ---
+echo "Fixing upstream typo in KernelSU-Next allowlist.c..."
+sed -i 's/\.current_uid/.curr_uid/g' common/drivers/kernelsu/policy/allowlist.c || true
+
 echo "======================================================="
 echo "=== SUSFS / KSU INJECTION AUDIT (PRE-BUILD CHECK) ==="
 echo "======================================================="
