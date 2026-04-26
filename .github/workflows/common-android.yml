@@ -1,1 +1,36 @@
+name: Build Android 14 GKI (6.1)
 
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/build-gki.sh'
+      - '.github/workflows/common-android.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Maximize build space
+        uses: easimon/maximize-build-space@master
+        with:
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Execute Build Script
+        run: bash scripts/build-gki.sh
+
+      - name: Upload Image and Log
+        uses: actions/upload-artifact@v4
+        with:
+          name: gki-aarch64-image
+          path: |
+            workspace/out/dist/Image
+            workspace/build.log
+          if-no-files-found: error
