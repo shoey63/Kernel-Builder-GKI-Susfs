@@ -30,7 +30,7 @@ repo init -u "${MANIFEST_URL}" -b "${BRANCH}" --depth=1
 repo sync -c -j$(nproc) --no-clone-bundle --no-tags
 
 echo "=== Building GKI via Kleaf (Bazel) ==="
-# Disable colors/curses for a clean text log and capture output to build.log
-tools/bazel --color=no --curses=no run //common:kernel_aarch64_dist -- --dist_dir="${DIST_DIR}" 2>&1 | tee build.log
+# Notice the flags are now AFTER the 'run' command
+tools/bazel run --color=no --curses=no //common:kernel_aarch64_dist -- --dist_dir="${DIST_DIR}" 2>&1 | tee build.log
 
 echo "=== Build Complete ==="
