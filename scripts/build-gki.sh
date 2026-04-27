@@ -92,21 +92,6 @@ static DEFINE_IDA(susfs_mnt_group_ida);\n\
 ' fs/namespace.c
 fi
 rm -f fs/namespace.c.rej
-
-# --- Dynamically injecting devpts fixes that patching rejected ---
-sed -i '/devpts_get_priv -- get private data for a slave/i \
-#ifdef CONFIG_KSU_SUSFS\n\
-extern int ksu_handle_devpts(struct inode*);\n\
-#endif\n' fs/devpts/inode.c
-
-sed -i '/if (dentry->d_sb->s_magic != DEVPTS_SUPER_MAGIC)/i \
-#ifdef CONFIG_KSU_SUSFS\n\
-\tif (likely(susfs_is_current_proc_umounted())) {\n\
-\t\tgoto orig_flow;\n\
-\t}\n\
-\tksu_handle_devpts(dentry->d_inode);\n\
-orig_flow:\n\
-#endif\n' fs/devpts/inode.c
 cd ..
 
 # --- UPSTREAM BUG FIX ---
