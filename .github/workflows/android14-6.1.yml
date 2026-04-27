@@ -1,0 +1,187 @@
+name: Android 14 6.1 - Common Kernel + Repacked Boot
+
+on:
+  workflow_dispatch:
+
+env:
+  MANIFEST_URL: https://android.googlesource.com/kernel/manifest
+  MANIFEST_BRANCH: common-android14-6.1-2026-03
+  OTA_URL: https://dl.google.com/dl/android/aosp/komodo-ota-cp1a.260405.005-62a6d5ce.zip
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+
+      - name: Install system dependencies
+        run: |
+          set -euo pipefail
+          echo ">>> Forcing Ubuntu archive mirror"
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            printf '%s\n' "https://archive.ubuntu.com/ubuntu" | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
+          fi
+
+          sudo apt-get update -o Acquire::Retries=3
+          sudo apt-get install -y \
+            git \
+            curl \
+            unzip \
+            zip \
+            bc \
+            bison \
+            flex \
+            libssl-dev \
+            python3 \
+            python3-venv \
+            file \
+            xz-utils \
+            cpio
+
+      - name: Setup repo tool
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/bin"
+          curl -fsSL https://storage.googleapis.com/git-repo-downloads/repo -o "$HOME/bin/repo"
+          chmod +x "$HOME/bin/repo"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+
+      - name: Sync kernel source
+        run: |
+          set -euo pipefail
+          rm -rf kernel_workspace
+          mkdir -p kernel_workspace
+          cd kernel_workspace
+          repo init -u "$MANIFEST_URL" -b "$MANIFEST_BRANCH" --depth=1
+          repo sync -c --no-tags --no-clone-bundle --current-branch --fail-fast -j4
+
+      - name: Setup Python environment
+        run: |
+          set -euo pipefail
+          python3 -m venv .venv
+          source .venv/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install requests remotezip
+          python -m pip install git+https://github.com/5ec1cff/payload-dumper
+
+      - name: Make scripts executable
+        run: |
+          set -euo pipefail
+          chmod +x ./tools/magiskboot
+          chmod +x ./scripts/android14-6.1-build_kernel.sh
+          chmod +x ./scripts/android14-6.1-integrate_ksu_next.sh
+          chmod +x ./scripts/android14-6.1-integrate_susfs_next.sh
+          chmod +x ./scripts/ota_pull.py
+          chmod +x ./scripts/boot_swap.sh
+
+      - name: Integrate KernelSU-Next
+        env:
+          KSU_NEXT_SETUP_URL: https://raw.githubusercontent.com/pershoot/KernelSU-Next/dev-susfs/kernel/setup.sh
+          KSU_NEXT_REF: dev-susfs
+          KSU_NEXT_HOOK_MODE: ""
+        run: |
+          set -euo pipefail
+          ./scripts/android14-6.1-integrate_ksu_next.sh
+
+      - name: Integrate SUSFS common-side
+        env:
+          SUSFS_NEXT_URL: https://gitlab.com/pershoot/susfs4ksu.git
+          SUSFS_NEXT_REF: gki-android14-6.1-dev
+          SUSFS_NEXT_COMMIT: ""
+        run: |
+          set -euo pipefail
+          ./scripts/android14-6.1-integrate_susfs_next.sh
+
+      - name: Build common kernel Image
+        run: |
+          set -euo pipefail
+          ./scripts/android14-6.1-build_kernel.sh
+
+      - name: Verify built Image
+        run: |
+          set -euo pipefail
+          test -f out/Image
+          echo ">>> Built Image"
+          ls -lah out/Image
+          file out/Image
+          sha256sum out/Image | tee out/Image.sha256
+
+      - name: Pull stock boot.img from OTA
+        run: |
+          set -euo pipefail
+          source .venv/bin/activate
+          mkdir -p work/stock
+          python ./scripts/ota_pull.py \
+            --source "$OTA_URL" \
+            --partition boot \
+            --outdir work/stock
+
+          echo ">>> Pulled stock boot image(s)"
+          find work/stock -maxdepth 1 -type f \( -name 'boot.img' -o -name 'boot-*.img' \) -ls
+
+      - name: Repack boot image with built Image
+        run: |
+          set -euo pipefail
+          mkdir -p out/final
+          mkdir -p work/repack-tmp
+
+          BOOT_IMG="$(find work/stock -maxdepth 1 -type f \( -name 'boot.img' -o -name 'boot-*.img' \) | head -n 1)"
+          [ -n "$BOOT_IMG" ] || { echo "[-] Could not find stock boot image"; exit 1; }
+
+          STOCK_NAME="$(basename "$BOOT_IMG" .img)"
+          cp -f "$BOOT_IMG" "out/final/${STOCK_NAME}-stock.img"
+
+          ./scripts/boot_swap.sh \
+            --boot "$BOOT_IMG" \
+            --image "out/Image" \
+            --magiskboot "./tools/magiskboot" \
+            --outdir "out/final" \
+            --outname "${STOCK_NAME}-repacked.img" \
+            --workdir "work/repack-tmp"
+
+      - name: Write metadata
+        run: |
+          set -euo pipefail
+          {
+            echo "MANIFEST_URL=${MANIFEST_URL}"
+            echo "MANIFEST_BRANCH=${MANIFEST_BRANCH}"
+            echo "OTA_URL=${OTA_URL}"
+            echo "TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          } > out/final/repack_metadata.txt
+
+      - name: Copy build log into final artifact
+        run: |
+          set -euo pipefail
+          cp -f out/build_common_kernel.log out/final/
+
+      - name: Copy strings report into final artifact
+        run: |
+          set -euo pipefail
+          cp -f out/image_strings.txt out/final/strings.txt
+
+      - name: Show outputs
+        run: |
+          set -euo pipefail
+          echo ">>> out/final/"
+          ls -lah out/final || true
+          echo
+          find out/final -maxdepth 1 -type f -ls || true
+
+          test -f out/final/boot_swap.log
+          test -f out/final/magiskboot.log
+          test -f out/final/strings.txt
+          test -n "$(find out/final -maxdepth 1 -type f -name '*-stock.img' | head -n 1)"
+          test -n "$(find out/final -maxdepth 1 -type f -name '*-repacked.img' | head -n 1)"
+
+      - name: Upload repacked boot artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: common-android14-6.1-repacked-boot
+          path: out/final/
+          if-no-files-found: error
