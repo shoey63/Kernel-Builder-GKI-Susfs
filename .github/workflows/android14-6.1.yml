@@ -1,4 +1,5 @@
 name: Android 14 6.1 - Common Kernel + Repacked Boot
+run-name: "${{ github.event.head_commit.message || format('Manual Build: {0}', inputs.manifest_branch || 'default') }} [${{ github.ref_name }}]"
 
 on:
   workflow_dispatch:
