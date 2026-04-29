@@ -5,12 +5,7 @@ cd kernel_workspace
 
 [ -d common ] || { echo "[-] common/ not found in kernel_workspace" >&2; exit 1; }
 
-# Variables (Defaults pointing to your repos!)
-SUSFS_NEXT_URL="${SUSFS_NEXT_URL:-https://gitlab.com/pershoot/susfs4ksu.git}"
-SUSFS_NEXT_REF="${SUSFS_NEXT_REF:-gki-android14-6.1-lts-dev}"
-
 echo ">>> Cloning susfs4ksu..."
-rm -rf susfs4ksu
 git clone --depth=1 -b "${SUSFS_NEXT_REF}" "${SUSFS_NEXT_URL}" susfs4ksu
 
 COMMON_PATCH_SRC="$(find susfs4ksu/kernel_patches -maxdepth 1 -type f -name '50_add_susfs_in_*.patch' | head -n1)"
