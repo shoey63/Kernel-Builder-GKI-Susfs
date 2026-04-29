@@ -72,8 +72,8 @@ jobs:
 
       - name: Integrate KernelSU-Next
         env:
-          KSU_NEXT_SETUP_URL: https://raw.githubusercontent.com/pershoot/KernelSU-Next/dev-susfs/kernel/setup.sh
-          KSU_NEXT_REPO_URL: https://github.com/pershoot/KernelSU-Next.git
+          KSU_NEXT_SETUP_URL: https://raw.githubusercontent.com/shoey63/KernelSU-Next2/dev-susfs/kernel/setup.sh
+          KSU_NEXT_REPO_URL: https://github.com/shoey63/KernelSU-Next2.git
           KSU_NEXT_REF: dev-susfs
           KSU_NEXT_HOOK_MODE: ""
         run: |
@@ -81,7 +81,7 @@ jobs:
 
       - name: Integrate SUSFS common-side
         env:
-          SUSFS_NEXT_URL: https://gitlab.com/pershoot/susfs4ksu.git
+          SUSFS_NEXT_URL: https://github.com/shoey63/susfs4ksu.git
           SUSFS_NEXT_REF: gki-android14-6.1-lts-dev
           SUSFS_NEXT_COMMIT: ""
         run: |
