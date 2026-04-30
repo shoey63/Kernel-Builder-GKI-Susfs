@@ -18,7 +18,7 @@ if [ "$CURRENT_BRANCH" != "${KSU_NEXT_REF}" ]; then
     echo ">>> setup.sh hijacked the branch (currently on: $CURRENT_BRANCH). Restoring ${KSU_NEXT_REF} branch..."
     git -C KernelSU-Next checkout "${KSU_NEXT_REF}"
 else
-    echo ">>> Branch is perfectly intact. No sledgehammer required."
+    >>> Verified branch: ${KSU_NEXT_REF}. No corrective checkout required.
 fi
 
 echo ">>> Creating symlink for Bazel sandbox..."
