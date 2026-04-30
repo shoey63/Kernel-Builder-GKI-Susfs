@@ -72,19 +72,25 @@ jobs:
 
       - name: Integrate KernelSU-Next
         env:
-          KSU_NEXT_SETUP_URL: https://raw.githubusercontent.com/shoey63/KernelSU-Next2/pixel9-susfs-gki-android14-6.1/kernel/setup.sh
-          KSU_NEXT_REPO_URL: https://github.com/shoey63/KernelSU-Next2.git
-          KSU_NEXT_REF: pixel9-susfs-gki-android14-6.1
+          # Pulling the raw setup script directly from Pershoot's dev-susfs branch
+          KSU_NEXT_SETUP_URL: https://raw.githubusercontent.com/pershoot/KernelSU-Next/dev-susfs/kernel/setup.sh
+          # Cloning Pershoot's live repo
+          KSU_NEXT_REPO_URL: https://github.com/pershoot/KernelSU-Next.git
+          # Tracking his bleeding-edge branch
+          KSU_NEXT_REF: dev-susfs
           KSU_NEXT_HOOK_MODE: ""
         run: |
           bash ./scripts/android14-6.1-integrate_ksu_next.sh
 
       - name: Integrate SUSFS common-side
         env:
-          SUSFS_NEXT_URL: https://github.com/shoey63/susfs4ksu.git
-          SUSFS_NEXT_REF: gki-android14-6.1-dev
+          # Pulling directly from his live GitLab repo
+          SUSFS_NEXT_URL: https://gitlab.com/pershoot/susfs4ksu.git
+          # Tracking his specific LTS dev branch
+          SUSFS_NEXT_REF: gki-android14-6.1-lts-dev
         run: |
           bash ./scripts/android14-6.1-integrate_susfs_next.sh
+
           
       - name: Build common kernel Image
         run: |
