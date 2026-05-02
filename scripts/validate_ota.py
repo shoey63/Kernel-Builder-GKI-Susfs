@@ -14,7 +14,7 @@ def main():
 
     # 1. Blank or Garbage format (Scenario: leaves blank or pastes garbage)
     if not url or not url.startswith("http") or not url.lower().endswith(".zip"):
-        print("Invalid/Empty - proceeding with Image generation only")
+        print("Invalid or empty - proceeding with Image generation only")
         set_repack_enabled(False)
         sys.exit(0)
 
@@ -39,7 +39,7 @@ def main():
 
     except Exception:
         # 5. Network errors, 404s, or server doesn't allow HTTP Range requests
-        print("Not supported/Network error - proceeding with Image generation only")
+        print("Bad address or not allowed - proceeding with Image generation only")
         set_repack_enabled(False)
 
 if __name__ == "__main__":
