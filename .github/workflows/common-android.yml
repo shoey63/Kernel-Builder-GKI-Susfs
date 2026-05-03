@@ -143,6 +143,6 @@ jobs:
       - name: Upload repacked boot artifact
         uses: actions/upload-artifact@v4
         with:
-          name: common-android15-6.6-repacked-boot
+          name: ${{ inputs.build_name }}-repacked-boot
           path: out/final/
           if-no-files-found: error
