@@ -14,15 +14,22 @@ for f in common/android/abi_gki_protected_exports*; do
   fi
 done
 
-echo ">>> Removing '-dirty' flag from kernel release string..."
-sed -i "s/printf '%s' -dirty/printf '%s' ''/g" common/scripts/setlocalversion
+echo ">>> Satisfying Kleaf's git status checks to remove -dirty and fix timestamp..."
+cd common
 
-echo ">>> Foiling Kleaf's 1970 build date..."
-# Generate a formatted date string (e.g., "Sun May 03 18:55:24 UTC 2026")
-CURRENT_DATE=$(date -u +"%a %b %d %H:%M:%S UTC %Y")
+# Configure dummy git details for the CI runner
+git config --global user.name "github-actions[bot]"
+git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-# Replace the default timestamp logic in the 6.1+ Makefile
-sed -i "s/build-timestamp = \$(or \$(KBUILD_BUILD_TIMESTAMP), \$(build-timestamp-auto))/build-timestamp = \"$CURRENT_DATE\"/g" common/init/Makefile
+# Stage all KSU and Susfs modifications
+git add .
+
+# Commit the changes. This does two things:
+# 1. Makes the tree "clean", removing the -dirty flag.
+# 2. Sets the HEAD commit timestamp to RIGHT NOW, which Kleaf uses for the build date.
+git commit -m "ci: inject KSU and SusFS patches" || true
+
+cd ..
 
 echo ">>> Compiling common Android arm64 kernel..."
 tools/bazel run --config=local --config=stamp //common:kernel_aarch64_dist -- --destdir=out/dist
