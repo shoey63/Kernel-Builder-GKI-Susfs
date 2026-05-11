@@ -119,10 +119,16 @@ jobs:
           
       - name: Build common kernel Image
         run: |
-          # Export captured variables for the script to use
-          export OFFICIAL_HASH=${{ env.OFFICIAL_HASH }}
-          export OFFICIAL_DATE=${{ env.OFFICIAL_DATE }}
-          bash ./scripts/build_kernel.sh
+          # 1. Capture metadata directly in this shell session
+          cd kernel_workspace/common
+          export OFFICIAL_HASH=$(git rev-parse --short HEAD)
+          export OFFICIAL_DATE=$(git log -1 --format=%ct)
+          cd ../..
+
+          echo ">>> Injecting Identity: g$OFFICIAL_HASH ($OFFICIAL_DATE)"
+
+          # 2. Pass variables explicitly to the script environment
+          OFFICIAL_HASH=$OFFICIAL_HASH OFFICIAL_DATE=$OFFICIAL_DATE bash ./scripts/build_kernel.sh
 
       - name: Pull stock boot.img from OTA
         if: env.REPACK_ENABLED == 'true'
