@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# set -e
+cd common
 
-# ---------------------------------------------------------
-# CUSTOM PATCHES & CHERRY-PICKS
-# ---------------------------------------------------------
-# This script runs AFTER 'repo sync' but BEFORE 'build_kernel.sh'.
-# Use it to modify the source tree (Makefile, Kconfig, etc.)
-# ---------------------------------------------------------
+echo ">>> Integrating WireGuard into GKI..."
 
-# Example: 
-# cd kernel_workspace/common
-# git fetch https://android.googlesource.com/kernel/common <branch>
-# git cherry-pick <hash>
-# cd ../..
+# Path to the GKI defconfig (adjust based on your specific architecture if needed)
+DEFCONFIG="arch/arm64/configs/gki_defconfig"
 
-# echo ">>> User modifications complete."
+# Enable WireGuard and required dependencies
+echo "CONFIG_WIREGUARD=y" >> $DEFCONFIG
+echo "CONFIG_NET_UDP_TUNNEL=y" >> $DEFCONFIG
+
+# Optional: Enable WireGuard Debugging for dmesg logs
+# echo "CONFIG_WIREGUARD_DEBUG=y" >> $DEFCONFIG
+
+echo ">>> WireGuard integration complete."
+cd ..
