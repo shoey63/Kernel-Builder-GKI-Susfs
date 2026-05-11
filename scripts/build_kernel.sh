@@ -29,27 +29,32 @@ git commit -m "ci: integrated KSU, SUSFS, and other patches if any" || true
 
 cd ..
 
-echo ">>> Fetching official commit date..."
-# Get the date of the official hash in the format: Mon, 11 May 2026 07:41:31 +0000
-OFFICIAL_DATE=$(cd common && git log -1 --format=%aD $OFFICIAL_HASH)
+echo ">>> Fetching official commit metadata..."
+# Get the date and the Unix timestamp (Seconds since 1970)
+OFFICIAL_DATE=$(git -C common log -1 --format=%aD "$OFFICIAL_HASH")
+OFFICIAL_TIMESTAMP=$(git -C common log -1 --format=%ct "$OFFICIAL_HASH")
 
 echo ">>> Creating workspace status override..."
-cat <<EOF > ../workspace_status.sh
+cat <<EOF > workspace_status.sh
 #!/bin/bash
 echo "STABLE_BUILD_VERSION g$OFFICIAL_HASH"
+echo "STABLE_KBUILD_BUILD_TIMESTAMP $OFFICIAL_DATE"
 echo "STABLE_BUILD_USER android-build"
 echo "STABLE_BUILD_HOST google.com"
+# This forces Kleaf to treat the 'source date' as the official commit time
+echo "STABLE_SOURCE_DATE_EPOCH $OFFICIAL_TIMESTAMP" 
 EOF
-chmod +x ../workspace_status.sh
+chmod +x workspace_status.sh
 
 echo ">>> Compiling common Android arm64 kernel..."
 
-# We add --action_env for KBUILD_BUILD_TIMESTAMP to override the kernel internal clock
+# Adding --action_env=SOURCE_DATE_EPOCH is the final 'hammer' 
+# to prevent the 1970/current-date fallback in the Kbuild process.
 tools/bazel run --config=local --config=stamp \
-  --workspace_status_command=../workspace_status.sh \
+  --workspace_status_command=./workspace_status.sh \
   --action_env=KBUILD_BUILD_TIMESTAMP="$OFFICIAL_DATE" \
+  --action_env=SOURCE_DATE_EPOCH="$OFFICIAL_TIMESTAMP" \
   //common:kernel_aarch64_dist -- --destdir=out/dist
-
 
 IMAGE_PATH="$(find out/dist -type f -name 'Image' | head -n1)"
 
