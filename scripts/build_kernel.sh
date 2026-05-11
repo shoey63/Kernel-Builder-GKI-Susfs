@@ -21,42 +21,19 @@ cd common
 git config --global user.name "github-actions[bot]"
 git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-# Stage all changes
+# Stage and commit changes
 git add .
-
-# Create a commit for custom changes
 git commit -m "ci: integrated KSU, SUSFS, and other patches if any" || true
-
 cd ..
-
-echo ">>> Fetching official commit metadata..."
-OFFICIAL_DATE=$(git -C common log -1 --format=%aD "$OFFICIAL_HASH")
-OFFICIAL_TIMESTAMP=$(git -C common log -1 --format=%ct "$OFFICIAL_HASH")
-
-# 1. Use an absolute path for the status script
-STATUS_SCRIPT="$(pwd)/workspace_status.sh"
-
-echo ">>> Creating workspace status override..."
-cat <<EOF > "$STATUS_SCRIPT"
-#!/bin/bash
-echo "STABLE_BUILD_VERSION g$OFFICIAL_HASH"
-echo "STABLE_KBUILD_BUILD_TIMESTAMP $OFFICIAL_DATE"
-echo "STABLE_BUILD_USER android-build"
-echo "STABLE_BUILD_HOST google.com"
-echo "STABLE_SOURCE_DATE_EPOCH $OFFICIAL_TIMESTAMP"
-EOF
-
-# 2. Ensure permissions are set correctly
-chmod +x "$STATUS_SCRIPT"
 
 echo ">>> Compiling common Android arm64 kernel..."
 
-# 3. Pass the absolute path to --workspace_status_command
 tools/bazel run --config=local --config=stamp \
-  --workspace_status_command="$STATUS_SCRIPT" \
-  --action_env=KBUILD_BUILD_TIMESTAMP="$OFFICIAL_DATE" \
-  --action_env=SOURCE_DATE_EPOCH="$OFFICIAL_TIMESTAMP" \
+  --action_env=SOURCE_DATE_EPOCH="$OFFICIAL_DATE" \
+  --action_env=STABLE_BUILD_VERSION="g$OFFICIAL_HASH" \
+  --action_env=KLEAF_KERNEL_BUILD_VERSION="g$OFFICIAL_HASH" \
   //common:kernel_aarch64_dist -- --destdir=out/dist
+
 IMAGE_PATH="$(find out/dist -type f -name 'Image' | head -n1)"
 
 if [ -z "${IMAGE_PATH}" ] || [ ! -f "${IMAGE_PATH}" ]; then
