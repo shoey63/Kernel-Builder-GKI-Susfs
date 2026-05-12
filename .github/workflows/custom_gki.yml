@@ -27,6 +27,12 @@ on:
         required: false
         default: "gki-android14-6.1-dev"
         type: string
+
+      build_wg:
+        description: "Build with WireGuard integration?"
+        required: false
+        type: boolean
+        default: false
         
 env:
   MANIFEST_URL: https://android.googlesource.com/kernel/manifest
@@ -118,6 +124,8 @@ jobs:
         shell: bash
           
       - name: Build common kernel Image
+        env:
+          WITH_WG: ${{ inputs.build_wg }}
         run: |
           # Injecting the REAL Google identity into the script session
           OFFICIAL_HASH=${{ env.OFFICIAL_HASH }} \
