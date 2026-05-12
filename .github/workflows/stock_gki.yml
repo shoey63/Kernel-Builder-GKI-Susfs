@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       build_name:
-        description: "Device & Build ID (e.g., komodo-cp1a)"
+        description: "Device & Build ID (e.g., komodo-stock-cp1a)"
         required: false
         default: "gki-stock"
         type: string
@@ -68,38 +68,37 @@ jobs:
       - name: Sync kernel source
         run: |
           set -euo pipefail
-          rm -rf kernel_workspace
-          mkdir -p kernel_workspace
-          cd kernel_workspace
+          rm -rf kernel_workspace && mkdir -p kernel_workspace && cd kernel_workspace
           repo init -u "$MANIFEST_URL" -b "$MANIFEST_BRANCH" --depth=1
           repo sync -c --no-tags --no-clone-bundle --current-branch --fail-fast -j$(nproc)
           
-          # Capture the PURE Google hash
+          # Capture the PURE Google hash AND the official Unix timestamp
           cd common
           echo "OFFICIAL_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-          echo ">>> Captured Official Google Hash: $(git rev-parse --short HEAD)"
+          echo "OFFICIAL_DATE=$(git log -1 --format=%ct)" >> $GITHUB_ENV
+          echo ">>> Captured Hash: $(git rev-parse --short HEAD)"
+          echo ">>> Captured Date: $(git log -1 --format=%ct)"
 
-      - name: Neutralize ABI Protection
-        run: find kernel_workspace/common -name "android_abi_gki_aarch64*" -exec truncate -s 0 {} +
-        
-
-      - name: Build Pure GKI (Direct)
+      - name: Run Custom Patches
         run: |
-          cd kernel_workspace
-          # Capture official commit timestamp for SOURCE_DATE_EPOCH
-          OFFICIAL_DATE=$(git -C common log -1 --format=%ct)
-    
-          # Inject official metadata in build
-          tools/bazel run --config=local --config=stamp \
-            --action_env=SOURCE_DATE_EPOCH=$OFFICIAL_DATE \
-            --action_env=STABLE_BUILD_VERSION="g$OFFICIAL_HASH" \
-            //common:kernel_aarch64_dist -- --destdir=../out/dist
-
-      - name: Verify Kernel Version
+          # Check if file exists and has executable content.
+          if [ -s "scripts/custom_patches.sh" ] && [ $(grep -v '^#' scripts/custom_patches.sh | grep -c "[^[:space:]]") -gt 0 ]; then
+            echo ">>> Custom patch script detected. Applying modifications..."
+            chmod +x scripts/custom_patches.sh
+            ./scripts/custom_patches.sh
+          else
+            echo ">>> No custom patches to apply. Proceeding with stock build."
+          fi
+        shell: bash
+          
+      - name: Build common kernel Image
         run: |
-          echo ">>> Extracting compiled kernel version string..."
-          strings out/dist/Image | grep "Linux version" | head -n 1
-
+          # Injecting the REAL Google identity into the script session
+          OFFICIAL_HASH=${{ env.OFFICIAL_HASH }} \
+          OFFICIAL_DATE=${{ env.OFFICIAL_DATE }} \
+          WITH_WG=false \
+          bash ./scripts/build_kernel.sh
+          
       - name: Pull stock boot.img from OTA
         if: env.REPACK_ENABLED == 'true'
         run: |
@@ -126,10 +125,9 @@ jobs:
 
           STOCK_NAME="$(basename "$BOOT_IMG" .img)"
           cp -f "$BOOT_IMG" "out/final/${STOCK_NAME}-stock.img"
-          
           bash ./scripts/boot_swap.sh \
             --boot "$BOOT_IMG" \
-            --image "out/dist/Image" \
+            --image "out/Image" \
             --magiskboot "./tools/magiskboot" \
             --outdir "out/final" \
             --outname "${STOCK_NAME}-repacked.img" \
@@ -138,11 +136,10 @@ jobs:
       - name: Prepare Final Artifacts
         run: |
           mkdir -p out/final
-          echo -e "TYPE=STOCK_GKI\nHASH=g${OFFICIAL_HASH}\nTIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')" > out/final/build_metadata.txt
-      
+          echo -e "MANIFEST_URL=${MANIFEST_URL}\nMANIFEST_BRANCH=${MANIFEST_BRANCH}\nOTA_URL=${OTA_URL}\nTIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')" > out/final/repack_metadata.txt
           if [ "$REPACK_ENABLED" != "true" ]; then
             echo ">>> Image-only mode: Copying raw kernel Image to artifacts"
-            cp -f out/dist/Image out/final/ || true
+            cp -f out/Image out/final/ || true
           fi
           
           echo ">>> Final Artifact Directory:"
