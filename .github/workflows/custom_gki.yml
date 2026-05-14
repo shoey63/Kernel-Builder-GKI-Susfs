@@ -9,9 +9,16 @@ on:
         required: false
         default: "gki-custom"
         type: string
+        
+      enable_ksu_susfs:
+        description: "Integrate KernelSU and SUSFS? (Uncheck to build a stock GKI kernel)"
+        required: false
+        type: boolean
+        default: true
       
       ota_url:
         description: "Full OTA ZIP URL (with payload.bin in zip root)"
+
         required: false
         default: ""
         type: string
@@ -92,6 +99,7 @@ jobs:
           echo ">>> Captured Date: $(git log -1 --format=%ct)"
 
       - name: Integrate KernelSU-Next
+        if: inputs.enable_ksu_susfs == true
         env:
           KSU_NEXT_SETUP_URL: https://raw.githubusercontent.com/pershoot/KernelSU-Next/dev/kernel/setup.sh
           KSU_NEXT_REPO_URL: https://github.com/pershoot/KernelSU-Next.git
@@ -101,6 +109,7 @@ jobs:
           bash ./scripts/integrate_ksu_next.sh  
          
       - name: Integrate SUSFS common-side
+        if: inputs.enable_ksu_susfs == true
         env:
           SUSFS_NEXT_URL: https://gitlab.com/simonpunk/susfs4ksu.git
           SUSFS_NEXT_REF: ${{ inputs.susfs_branch }}
@@ -108,8 +117,10 @@ jobs:
           bash ./scripts/integrate_susfs_next.sh
 
       - name: Fix SUSFS Patch Rejections
+        if: inputs.enable_ksu_susfs == true
         run: |
           bash ./scripts/fix_susfs_rejections.sh
+
 
       - name: Run Custom Patches
         run: |
