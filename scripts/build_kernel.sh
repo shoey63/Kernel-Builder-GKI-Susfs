@@ -54,32 +54,20 @@ else
 fi
 
 if [ "$ROOT_MANAGER" = "SukiSU-Ultra" ]; then
-    echo ">>> SukiSU-Ultra detected! Injecting KPM via Kleaf fragment..."
-    cd common
+    echo ">>> SukiSU-Ultra detected! Forcing KPM via compiler override..."
     
-    # 1. Create the KPM fragment
-    cat > kpm_fragment << 'EOF'
-# --- KPM CORE FOR SUKISU-ULTRA ---
-CONFIG_KPM=y
-EOF
-
-    # 2. Inject into Bazel build system safely
-    echo 'exports_files(["kpm_fragment"])' >> BUILD.bazel
+    # Locate where the setup.sh script placed the root manager (usually drivers/kernelsu or fs/ksu)
+    KSU_DIR="common/drivers/kernelsu"
+    [ -d "common/fs/ksu" ] && KSU_DIR="common/fs/ksu"
     
-    if grep -q "post_defconfig_fragments" BUILD.bazel; then
-        # WireGuard already added the argument, just append our fragment to the existing array
-        sed -i 's/post_defconfig_fragments = \[/post_defconfig_fragments = \["kpm_fragment", /' BUILD.bazel
-    else
-        # No WireGuard, create the argument from scratch
-        sed -i '/name = "kernel_aarch64",/a \    post_defconfig_fragments = ["kpm_fragment"],' BUILD.bazel
-    fi
+    # 1. Bypass Kbuild sanitizer and pass the flag directly to the C compiler
+    echo "ccflags-y += -DCONFIG_KPM" >> "$KSU_DIR/Makefile"
     
-    # 3. Mark modified files as clean
-    echo ">>> Marking KPM modified files as clean..."
-    git update-index --assume-unchanged BUILD.bazel
-    echo "kpm_fragment" >> .git/info/exclude
+    # 2. Ensure the Makefile actually traverses into the kpm/ folder
+    grep -q "obj-y += kpm/" "$KSU_DIR/Makefile" || echo "obj-y += kpm/" >> "$KSU_DIR/Makefile"
     
-    cd ..
+    echo ">>> Marking Makefile as clean..."
+    git -C common update-index --assume-unchanged "$KSU_DIR/Makefile"
 fi
 
 echo ">>> Marking repo as clean (cloaking any source modifications)..."
