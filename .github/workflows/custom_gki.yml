@@ -12,12 +12,12 @@ on:
 
       root_manager:
         description: "Select Root Environment (Pre-patched with SuSFS)"
-        required: true
-        default: "KernelSU"
+        required: false
+        default: "KernelSU-Next"
         type: choice
         options:
-          - KernelSU
           - KernelSU-Next
+          - KernelSU
           - SukiSU-Ultra
           
       enable_ksu_susfs:
@@ -122,7 +122,8 @@ jobs:
           echo ">>> SukiSU-Ultra detected! Enabling KPM switch in Kconfig..."          
           KSU_KCONFIG="kernel_workspace/common/drivers/kernelsu/Kconfig"    
           sed -i '/config KPM/,/help/{s/default n/default y/}' "$KSU_KCONFIG"
-          sed -i '/select KALLSYMS/d' "$KSU_KCONFIG"      
+          sed -i '/select KALLSYMS/d' "$KSU_KCONFIG"  
+          sed -i '/config KSU_DEBUG/,/help/{s/default n/default y/}' "$KSU_KCONFIG"
           echo ">>> KPM successfully set to default y."
 
 
