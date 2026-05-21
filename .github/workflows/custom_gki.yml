@@ -118,7 +118,14 @@ jobs:
           KSU_NEXT_HOOK_MODE: ""
         run: |
           bash ./scripts/integrate_ksu_next.sh  
-    
+
+      - name: Enable KPM Engine (SukiSU-Ultra Only)
+        if: inputs.enable_ksu_susfs == true && inputs.root_manager == 'SukiSU-Ultra'
+        run: |
+          echo ">>> SukiSU-Ultra detected! Flipping KPM switch in Kconfig..."     
+          sed -i '/config KPM/,/help/{s/default n/default y/}' kernel_workspace/common/drivers/kernelsu/Kconfig      
+          echo ">>> KPM successfully set to default y. Kbuild will handle dependencies."
+
       - name: Integrate SUSFS common-side
         if: inputs.enable_ksu_susfs == true
         env:
