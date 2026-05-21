@@ -28,7 +28,6 @@ on:
       
       ota_url:
         description: "Full OTA ZIP URL (with payload.bin in zip root)"
-
         required: false
         default: ""
         type: string
@@ -59,7 +58,6 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -111,7 +109,6 @@ jobs:
       - name: Integrate Root Manager (${{ inputs.root_manager }})
         if: inputs.enable_ksu_susfs == true
         env:
-          # Dynamically injects the chosen manager into the URL paths
           KSU_NEXT_SETUP_URL: https://raw.githubusercontent.com/shoey63/${{ inputs.root_manager }}/dev-susfs/kernel/setup.sh
           KSU_NEXT_REPO_URL: https://github.com/shoey63/${{ inputs.root_manager }}.git
           KSU_NEXT_REF: dev-susfs
@@ -122,7 +119,7 @@ jobs:
       - name: Enable KPM Engine (SukiSU-Ultra Only)
         if: inputs.enable_ksu_susfs == true && inputs.root_manager == 'SukiSU-Ultra'
         run: |
-          echo ">>> SukiSU-Ultra detected! Flipping KPM switch in Kconfig..."     
+          echo ">>> SukiSU-Ultra detected! Activating KPM switch in Kconfig..."     
           sed -i '/config KPM/,/help/{s/default n/default y/}' kernel_workspace/common/drivers/kernelsu/Kconfig      
           echo ">>> KPM successfully set to default y. Kbuild will handle dependencies."
 
