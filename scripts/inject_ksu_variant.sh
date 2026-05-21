@@ -45,4 +45,8 @@ ln -sfn "../../${MANAGER_DIR}/kernel" "${DRIVER_ROOT}/kernelsu"
 # Quick sanity check
 [ -L "${DRIVER_ROOT}/kernelsu" ] || { echo "[-] Symlink failed" >&2; exit 1; }
 
+echo ">>> disable signature verification..."
+echo 'KSU_EXPECTED_SIZE := ""' >> "${MANAGER_DIR}/kernel/Makefile"
+echo 'KSU_EXPECTED_HASH := ""' >> "${MANAGER_DIR}/kernel/Makefile"
+
 echo ">>> ${MANAGER_DIR} integration complete!"
