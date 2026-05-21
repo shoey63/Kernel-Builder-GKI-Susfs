@@ -109,12 +109,11 @@ jobs:
       - name: Integrate Root Manager (${{ inputs.root_manager }})
         if: inputs.enable_ksu_susfs == true
         env:
-          KSU_NEXT_SETUP_URL: https://raw.githubusercontent.com/shoey63/${{ inputs.root_manager }}/dev-susfs/kernel/setup.sh
           KSU_NEXT_REPO_URL: https://github.com/shoey63/${{ inputs.root_manager }}.git
           KSU_NEXT_REF: dev-susfs
           KSU_NEXT_HOOK_MODE: ""
         run: |
-          bash ./scripts/inject_ksu_variant.sh  
+          bash ./scripts/inject_ksu_variant.sh "${{ inputs.root_manager }}"
 
       - name: Enable KPM Engine (SukiSU-Ultra Only)
         if: inputs.enable_ksu_susfs == true && inputs.root_manager == 'SukiSU-Ultra'
