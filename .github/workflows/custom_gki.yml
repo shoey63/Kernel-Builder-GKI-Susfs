@@ -114,7 +114,7 @@ jobs:
           KSU_NEXT_REF: dev-susfs
           KSU_NEXT_HOOK_MODE: ""
         run: |
-          bash ./scripts/integrate_ksu_next.sh  
+          bash ./scripts/inject_ksu_variant.sh  
 
       - name: Enable KPM Engine (SukiSU-Ultra Only)
         if: inputs.enable_ksu_susfs == true && inputs.root_manager == 'SukiSU-Ultra'
