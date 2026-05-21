@@ -119,9 +119,12 @@ jobs:
       - name: Enable KPM Engine (SukiSU-Ultra Only)
         if: inputs.enable_ksu_susfs == true && inputs.root_manager == 'SukiSU-Ultra'
         run: |
-          echo ">>> SukiSU-Ultra detected! Activating KPM switch in Kconfig..."     
-          sed -i '/config KPM/,/help/{s/default n/default y/}' kernel_workspace/common/drivers/kernelsu/Kconfig      
-          echo ">>> KPM successfully set to default y. Kbuild will handle dependencies."
+          echo ">>> SukiSU-Ultra detected! Enabling KPM switch in Kconfig..."          
+          KSU_KCONFIG="kernel_workspace/common/drivers/kernelsu/Kconfig"    
+          sed -i '/config KPM/,/help/{s/default n/default y/}' "$KSU_KCONFIG"
+          sed -i '/select KALLSYMS/d' "$KSU_KCONFIG"      
+          echo ">>> KPM successfully set to default y."
+
 
       - name: Integrate SUSFS common-side
         if: inputs.enable_ksu_susfs == true
@@ -135,7 +138,6 @@ jobs:
         if: inputs.enable_ksu_susfs == true
         run: |
           bash ./scripts/fix_susfs_rejections.sh
-
 
       - name: Run Custom Patches
         run: |
