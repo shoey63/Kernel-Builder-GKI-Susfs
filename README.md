@@ -1,8 +1,8 @@
 # Custom GKI CI/CD Runner
 
-An automated GitHub Actions workflow for building custom Android Generic Kernel Images (GKI). This runner is designed for advanced kernel modifications, supporting automated pulling, patching, and repacking of boot images across multiple device generations (Pixel 6 through Pixel 10). 
+An automated GitHub Actions workflow for building custom Android Generic Kernel Images (GKI). While explicitly tested on the Pixel 6 and Pixel 9 Pro XL, this pipeline is designed to be highly compatible with **any device that supports standard GKI architectures**. 
 
-This pipeline is modular by design, allowing developers to inject root solutions, mask modifications, and compile network/performance modules seamlessly.
+This runner caters to advanced kernel modifications, supporting automated pulling, patching, and repacking of boot images. It is modular by design, allowing developers to inject root solutions, mask modifications, and compile network/performance modules seamlessly.
 
 ## Core Features
 
