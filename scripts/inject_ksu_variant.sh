@@ -36,25 +36,25 @@ echo ">>> Executing universal version spoofing (forcing HEAD~1)..."
 sed -i 's/rev-list --count HEAD/rev-list --count HEAD~1/g' "${MANAGER_DIR}/kernel/Kbuild" "${MANAGER_DIR}/kernel/Makefile" 2>/dev/null || true
 sed -i 's/rev-list --count $(REPO_BRANCH)/rev-list --count HEAD~1/g' "${MANAGER_DIR}/kernel/Kbuild" "${MANAGER_DIR}/kernel/Makefile" 2>/dev/null || true
 
-# --- THE MANAGER LOCATOR ---
-# Grab the exact commit hash of the official base we just spoofed
+# Obtain commit hash of the official base
 UPSTREAM_HASH=$(git -C "${MANAGER_DIR}" rev-parse HEAD~1)
 
 # Route the URL based on the variant being built
 if [ "$1" == "KernelSU" ]; then
     UPSTREAM_REPO="tiann/KernelSU"
 elif [ "$1" == "KernelSU-Next" ]; then
-    UPSTREAM_REPO="KernelSU-Next/KernelSU-Next" # Change this if pershoot moves his repo
+    UPSTREAM_REPO="KernelSU-Next/KernelSU-Next"
 elif [ "$1" == "SukiSU-Ultra" ]; then
-    UPSTREAM_REPO="rsuntk/SukiSU-Ultra" # Adjust to Ultra's actual upstream
+    UPSTREAM_REPO="SukiSU-Ultra/SukiSU-Ultra"
 else
     UPSTREAM_REPO="tiann/KernelSU"
 fi
 
 echo "==============================================="
 echo "🎯 MATCHING MANAGER APK LOCATOR"
-echo "Stop wading through Actions. Click here for your exact APK:"
-echo "https://github.com/${UPSTREAM_REPO}/actions?query=commit%3A${UPSTREAM_HASH}"
+echo "GitHub Action search is noisy. Go directly to the exact commit here:"
+echo "https://github.com/${UPSTREAM_REPO}/commit/${UPSTREAM_HASH}"
+echo "-> Click the green checkmark (✅) next to the commit title to download the APK."
 echo "==============================================="
 
 echo ">>> Creating symlink for Bazel sandbox..."
