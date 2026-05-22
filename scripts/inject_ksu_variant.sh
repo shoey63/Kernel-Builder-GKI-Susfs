@@ -17,7 +17,7 @@ git clone "${KSU_NEXT_REPO_URL}" -b "${KSU_NEXT_REF}" "${MANAGER_DIR}"
 TIP_HASH=$(git -C "${MANAGER_DIR}" rev-parse --short HEAD)
 TIP_MSG=$(git -C "${MANAGER_DIR}" log -1 --format="%s")
 
-echo ">>> [PRE-FLIGHT] Proper HEAD secured:"
+echo ">>> Pre-initialisation - proper HEAD secured:"
 echo ">>> Commit: ${TIP_HASH}"
 echo ">>> Message: ${TIP_MSG}"
 
@@ -26,13 +26,13 @@ echo ">>> Running upstream setup.sh..."
 bash "${MANAGER_DIR}/kernel/setup.sh" "${KSU_NEXT_REF}"
 
 echo "----------------------------------------------"
-echo ">>> [POST-FLIGHT] setup.sh complete. HEAD currently at: $(git -C "${MANAGER_DIR}" rev-parse --short HEAD)"
+echo ">>> setup.sh complete. HEAD currently at: $(git -C "${MANAGER_DIR}" rev-parse --short HEAD)"
 echo "----------------------------------------------"
 
 echo ">>> Neutralizing setup.sh git manipulations..."
 git -C "${MANAGER_DIR}" checkout "${KSU_NEXT_REF}"
 
-echo ">>> Executing universal version spoofing (forcing HEAD~1)..."
+echo ">>> Fetching universal upstream version (forcing HEAD~1)..."
 sed -i 's/rev-list --count HEAD/rev-list --count HEAD~1/g' "${MANAGER_DIR}/kernel/Kbuild" "${MANAGER_DIR}/kernel/Makefile" 2>/dev/null || true
 sed -i 's/rev-list --count $(REPO_BRANCH)/rev-list --count HEAD~1/g' "${MANAGER_DIR}/kernel/Kbuild" "${MANAGER_DIR}/kernel/Makefile" 2>/dev/null || true
 
@@ -50,12 +50,10 @@ else
     UPSTREAM_REPO="tiann/KernelSU"
 fi
 
-echo "==============================================="
-echo "🎯 MATCHING MANAGER APK LOCATOR"
-echo "GitHub Action search is noisy. Go directly to the exact commit here:"
+echo "To get the matching manager, go directly to the exact commit here:"
 echo "https://github.com/${UPSTREAM_REPO}/commit/${UPSTREAM_HASH}"
-echo "-> Click the green checkmark (✅) next to the commit title to download the APK."
-echo "==============================================="
+echo "-> Click the green checkmark (✅) next to the commit title."
+echo "Then locate the action run to obtain the zip with the Manager APK"
 
 echo ">>> Creating symlink for Bazel sandbox..."
 DRIVER_ROOT="common/drivers"
