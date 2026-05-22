@@ -32,21 +32,17 @@ echo "--------------------------------------------------------"
 echo ">>> [POST-FLIGHT] setup.sh complete. HEAD currently at: $(git -C "${MANAGER_DIR}" rev-parse --short HEAD)"
 echo "--------------------------------------------------------"
 
-# THE SLEDGEHAMMER
 echo ">>> Neutralizing setup.sh git manipulations..."
 git -C "${MANAGER_DIR}" checkout "${KSU_NEXT_REF}"
 
+echo ">>> Executing universal version spoofing (forcing HEAD~1)..."
+sed -i 's/rev-list --count HEAD/rev-list --count HEAD~1/g' "${MANAGER_DIR}/kernel/Kbuild" "${MANAGER_DIR}/kernel/Makefile" 2>/dev/null || true
+sed -i 's/rev-list --count $(REPO_BRANCH)/rev-list --count HEAD~1/g' "${MANAGER_DIR}/kernel/Kbuild" "${MANAGER_DIR}/kernel/Makefile" 2>/dev/null || true
+
 echo ">>> Creating symlink for Bazel sandbox..."
 DRIVER_ROOT="common/drivers"
-
 rm -rf "${DRIVER_ROOT}/kernelsu"
 ln -sfn "../../${MANAGER_DIR}/kernel" "${DRIVER_ROOT}/kernelsu"
-
-# Quick sanity check
 [ -L "${DRIVER_ROOT}/kernelsu" ] || { echo "[-] Symlink failed" >&2; exit 1; }
-
-echo ">>> disable signature verification..."
-echo 'KSU_EXPECTED_SIZE := ""' >> "${MANAGER_DIR}/kernel/Makefile"
-echo 'KSU_EXPECTED_HASH := ""' >> "${MANAGER_DIR}/kernel/Makefile"
 
 echo ">>> ${MANAGER_DIR} integration complete!"
