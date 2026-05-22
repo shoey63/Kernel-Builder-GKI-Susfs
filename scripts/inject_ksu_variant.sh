@@ -33,9 +33,9 @@ echo "----------------------------------------------"
 echo ">>> Neutralizing setup.sh git manipulations..."
 git -C "${MANAGER_DIR}" checkout "${KSU_NEXT_REF}"
 
-echo ">>> Integrating upstream commit into version (forcing HEAD~1)..."
-sed -i 's/rev-list --count HEAD/rev-list --count HEAD~1/g' "${MANAGER_DIR}/kernel/Kbuild" "${MANAGER_DIR}/kernel/Makefile" 2>/dev/null || true
-sed -i 's/rev-list --count $(REPO_BRANCH)/rev-list --count HEAD~1/g' "${MANAGER_DIR}/kernel/Kbuild" "${MANAGER_DIR}/kernel/Makefile" 2>/dev/null || true
+echo ">>> Integrating upstream commit into manager version (forcing HEAD~1)..."
+sed -i 's/rev-list --count HEAD/rev-list --count HEAD~1/g' "${MANAGER_DIR}/kernel/Kbuild" 2>/dev/null || true
+sed -i 's/rev-list --count \$(REPO_BRANCH)/rev-list --count HEAD~1/g' "${MANAGER_DIR}/kernel/Kbuild" 2>/dev/null || true
 
 # Obtain commit hash of the official base
 UPSTREAM_HASH=$(git -C "${MANAGER_DIR}" rev-parse HEAD~1)
@@ -53,8 +53,8 @@ fi
 
 echo "To get the matching manager, go directly to the exact commit here:"
 echo "https://github.com/${UPSTREAM_REPO}/commit/${UPSTREAM_HASH}"
-echo "-> Click the green checkmark (✅) next to the commit title."
-echo "Then locate the action run to obtain the zip with the Manager APK"
+echo "-> Click the green checkmark (✅) next to the commit title and get the #<run number>"
+echo "Then locate the action run to obtain the Manager zip which will contain the APK"
 
 echo ">>> Creating symlink for Bazel sandbox..."
 DRIVER_ROOT="common/drivers"
