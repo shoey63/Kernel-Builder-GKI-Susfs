@@ -6,10 +6,11 @@ cd kernel_workspace
 
 [ -d common ] || { echo "[-] common/ not found in kernel_workspace" >&2; exit 1; }
 
-MANAGER_DIR="$1"
+VARIANT=$1
+MANAGER_DIR="KernelSU"
 rm -rf "${MANAGER_DIR}"
 
-echo "=== Integrating ${MANAGER_DIR} ==="
+echo "=== Integrating ${VARIANT} ==="
 echo ">>> Cloning bleeding-edge branch: ${KSU_NEXT_REF}..."
 git clone "${KSU_NEXT_REPO_URL}" -b "${KSU_NEXT_REF}" "${MANAGER_DIR}"
 
@@ -32,7 +33,7 @@ echo "----------------------------------------------"
 echo ">>> Neutralizing setup.sh git manipulations..."
 git -C "${MANAGER_DIR}" checkout "${KSU_NEXT_REF}"
 
-echo ">>> Fetching universal upstream version (forcing HEAD~1)..."
+echo ">>> Integrating upstream commit into version (forcing HEAD~1)..."
 sed -i 's/rev-list --count HEAD/rev-list --count HEAD~1/g' "${MANAGER_DIR}/kernel/Kbuild" "${MANAGER_DIR}/kernel/Makefile" 2>/dev/null || true
 sed -i 's/rev-list --count $(REPO_BRANCH)/rev-list --count HEAD~1/g' "${MANAGER_DIR}/kernel/Kbuild" "${MANAGER_DIR}/kernel/Makefile" 2>/dev/null || true
 
