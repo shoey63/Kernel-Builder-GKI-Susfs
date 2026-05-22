@@ -11,8 +11,8 @@ MANAGER_DIR="KernelSU"
 rm -rf "${MANAGER_DIR}"
 
 echo "=== Integrating ${VARIANT} ==="
-echo ">>> Cloning bleeding-edge branch: ${KSU_NEXT_REF}..."
-git clone "${KSU_NEXT_REPO_URL}" -b "${KSU_NEXT_REF}" "${MANAGER_DIR}"
+echo ">>> Cloning bleeding-edge branch: ${KSU_VARIANT_REF}..."
+git clone "${KSU_VARIANT_REPO_URL}" -b "${KSU_VARIANT_REF}" "${MANAGER_DIR}"
 
 # --- THE LOGGING ENGINE ---
 TIP_HASH=$(git -C "${MANAGER_DIR}" rev-parse --short HEAD)
@@ -24,14 +24,14 @@ echo ">>> Message: ${TIP_MSG}"
 
 # Mitigate 'no tags found' error 
 echo ">>> Running upstream setup.sh..."
-bash "${MANAGER_DIR}/kernel/setup.sh" "${KSU_NEXT_REF}"
+bash "${MANAGER_DIR}/kernel/setup.sh" "${KSU_VARIANT_REF}"
 
 echo "----------------------------------------------"
 echo ">>> setup.sh complete. HEAD currently at: $(git -C "${MANAGER_DIR}" rev-parse --short HEAD)"
 echo "----------------------------------------------"
 
 echo ">>> Neutralizing setup.sh git manipulations..."
-git -C "${MANAGER_DIR}" checkout "${KSU_NEXT_REF}"
+git -C "${MANAGER_DIR}" checkout "${KSU_VARIANT_REF}"
 
 echo ">>> Integrating upstream commit into manager version (forcing HEAD~1)..."
 sed -i 's/rev-list --count HEAD/rev-list --count HEAD~1/g' "${MANAGER_DIR}/kernel/Kbuild" 2>/dev/null || true

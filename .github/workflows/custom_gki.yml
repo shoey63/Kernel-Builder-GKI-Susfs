@@ -109,9 +109,9 @@ jobs:
       - name: Integrate Root Manager (${{ inputs.root_manager }})
         if: inputs.enable_ksu_susfs == true
         env:
-          KSU_NEXT_REPO_URL: https://github.com/shoey63/${{ inputs.root_manager }}.git
-          KSU_NEXT_REF: dev-susfs
-          KSU_NEXT_HOOK_MODE: ""
+          KSU_VARIANT_REPO_URL: https://github.com/shoey63/${{ inputs.root_manager }}.git
+          KSU_VARIANT_REF: dev-susfs
+          KSU_VARIANT_HOOK_MODE: ""
         run: |
           bash ./scripts/inject_ksu_variant.sh "${{ inputs.root_manager }}"
 
