@@ -33,12 +33,12 @@ echo "----------------------------------------------"
 echo ">>> Neutralizing setup.sh git manipulations..."
 git -C "${MANAGER_DIR}" checkout "${KSU_VARIANT_REF}"
 
-echo ">>> Integrating upstream commit into manager version (forcing HEAD~1)..."
-sed -i 's/rev-list --count HEAD/rev-list --count HEAD~1/g' "${MANAGER_DIR}/kernel/Kbuild" 2>/dev/null || true
-sed -i 's/rev-list --count \$(REPO_BRANCH)/rev-list --count HEAD~1/g' "${MANAGER_DIR}/kernel/Kbuild" 2>/dev/null || true
+echo ">>> Integrating upstream commit into manager version (forcing HEAD~2)..."
+sed -i 's/rev-list --count HEAD/rev-list --count HEAD~2/g' "${MANAGER_DIR}/kernel/Kbuild" 2>/dev/null || true
+sed -i 's/rev-list --count \$(REPO_BRANCH)/rev-list --count HEAD~2/g' "${MANAGER_DIR}/kernel/Kbuild" 2>/dev/null || true
 
 # Obtain commit hash of the official base
-UPSTREAM_HASH=$(git -C "${MANAGER_DIR}" rev-parse HEAD~1)
+UPSTREAM_HASH=$(git -C "${MANAGER_DIR}" rev-parse HEAD~2)
 
 # Route the URL based on the variant being built
 if [ "$1" == "KernelSU" ]; then
