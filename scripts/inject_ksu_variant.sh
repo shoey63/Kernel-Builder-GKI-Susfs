@@ -16,12 +16,12 @@ git clone "${KSU_VARIANT_REPO_URL}" -b "${KSU_VARIANT_REF}" "${MANAGER_DIR}"
 echo ">>> Executing native setup.sh..."
 bash "${MANAGER_DIR}/kernel/setup.sh" "${KSU_VARIANT_REF}"
 
-echo ">>> Enforcing CI symmetry (locking version strings to HEAD~2)..."
-sed -i 's/rev-list --count HEAD/rev-list --count HEAD~2/g' "${MANAGER_DIR}/kernel/Kbuild" 2>/dev/null || true
-sed -i 's/rev-list --count \$(REPO_BRANCH)/rev-list --count HEAD~2/g' "${MANAGER_DIR}/kernel/Kbuild" 2>/dev/null || true
+echo ">>> Enforcing CI symmetry (locking version strings to HEAD~1)..."
+sed -i 's/rev-list --count HEAD/rev-list --count HEAD~1/g' "${MANAGER_DIR}/kernel/Kbuild" 2>/dev/null || true
+sed -i 's/rev-list --count \$(REPO_BRANCH)/rev-list --count HEAD~1/g' "${MANAGER_DIR}/kernel/Kbuild" 2>/dev/null || true
 
 # Obtain commit hash of the official base for the APK locator
-UPSTREAM_HASH=$(git -C "${MANAGER_DIR}" rev-parse HEAD~2)
+UPSTREAM_HASH=$(git -C "${MANAGER_DIR}" rev-parse HEAD~1)
 
 if [[ "${VARIANT}" == "KernelSU" ]]; then
     UPSTREAM_REPO="tiann/KernelSU"
