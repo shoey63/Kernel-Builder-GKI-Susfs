@@ -16,22 +16,32 @@ git clone "${KSU_VARIANT_REPO_URL}" -b "${KSU_VARIANT_REF}" "${MANAGER_DIR}"
 echo ">>> Executing native setup.sh..."
 bash "${MANAGER_DIR}/kernel/setup.sh" "${KSU_VARIANT_REF}"
 
-echo ">>> Enforcing CI symmetry (locking version strings to HEAD~1)..."
-sed -i 's/rev-list --count HEAD/rev-list --count HEAD~1/g' "${MANAGER_DIR}/kernel/Kbuild" 2>/dev/null || true
-sed -i 's/rev-list --count \$(REPO_BRANCH)/rev-list --count HEAD~1/g' "${MANAGER_DIR}/kernel/Kbuild" 2>/dev/null || true
-
-# Obtain commit hash of the official base for the APK locator
-UPSTREAM_HASH=$(git -C "${MANAGER_DIR}" rev-parse HEAD~1)
-
+# Route the URL and default branch based on the variant
 if [[ "${VARIANT}" == "KernelSU" ]]; then
     UPSTREAM_REPO="tiann/KernelSU"
+    UPSTREAM_BRANCH="main"
 elif [[ "${VARIANT}" == "KernelSU-Next" ]]; then
     UPSTREAM_REPO="KernelSU-Next/KernelSU-Next"
+    UPSTREAM_BRANCH="dev"
 elif [[ "${VARIANT}" == "SukiSU-Ultra" ]]; then
     UPSTREAM_REPO="SukiSU-Ultra/SukiSU-Ultra"
+    UPSTREAM_BRANCH="main"
 else
     UPSTREAM_REPO="tiann/KernelSU"
+    UPSTREAM_BRANCH="main"
 fi
+
+echo ">>> Locating official upstream sync point..."
+# Fetch the official upstream branch to find the divergence point
+git -C "${MANAGER_DIR}" fetch --quiet "https://github.com/${UPSTREAM_REPO}.git" "${UPSTREAM_BRANCH}"
+
+# Dynamically calculate the exact upstream commit before your custom commits began
+UPSTREAM_HASH=$(git -C "${MANAGER_DIR}" merge-base HEAD FETCH_HEAD)
+SHORT_HASH=${UPSTREAM_HASH:0:7}
+
+echo ">>> Enforcing CI symmetry (locking version strings to ${SHORT_HASH})..."
+sed -i "s/rev-list --count HEAD/rev-list --count ${UPSTREAM_HASH}/g" "${MANAGER_DIR}/kernel/Kbuild" 2>/dev/null || true
+sed -i "s/rev-list --count \$(REPO_BRANCH)/rev-list --count ${UPSTREAM_HASH}/g" "${MANAGER_DIR}/kernel/Kbuild" 2>/dev/null || true
 
 echo "----------------------------------------------"
 echo ">>> Manager APK Locator:"
