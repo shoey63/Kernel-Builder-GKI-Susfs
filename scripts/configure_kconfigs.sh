@@ -52,4 +52,4 @@ else
 fi
 
 cd ..
-echo ">>> Kconfig configurations successfully completed."
+echo ">>> Kconfig configuration phase complete."
