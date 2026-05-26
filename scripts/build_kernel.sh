@@ -9,7 +9,7 @@ cd kernel_workspace
 mkdir -p ../out out/dist
 
 echo ">>> Marking repo as clean (cloaking all custom configuration & source modifications)..."
-# Dynamically gathers every single modification from scripts 1 and 2 and shields them
+# Dynamically safeguards all modifications 
 git -C common ls-files -m | xargs -r git -C common update-index --assume-unchanged
 
 echo ">>> Commencing build: g$OFFICIAL_HASH"
@@ -33,15 +33,21 @@ fi
 echo ">>> Selected Image: ${IMAGE_PATH}"
 cp -f "${IMAGE_PATH}" ../out/Image
 
-echo ">>> Verifying built image version details..."
-strings ../out/Image | grep "Linux version" | head -n 1
-
 if [ "$WITH_WG" = "true" ]; then
-    echo ">>> Validating WireGuard symbol integration status..."
-    if strings ../out/Image | grep -qi "wireguard"; then
-        echo ">>> SUCCESS: WireGuard core symbols validated."
+    echo ">>> Validating custom WireGuard & Hardware Crypto pipeline..."
+    
+    # 1. Verify the core module exists
+    if ! strings ../out/Image | grep -qi "wireguard"; then
+        echo "[-] ERROR: Core WireGuard engine missing from binary!" >&2
+        exit 1
+    fi
+
+    # 2. Verify the ultra-responsive ARM64 NEON pipeline compiled in
+    if strings ../out/Image | grep -qE "chacha_neon|poly1305_blocks_neon"; then
+        echo ">>> SUCCESS: WireGuard NEON hardware crypto acceleration validated!"
     else
-        echo ">>> ERROR: WireGuard symbols missing from compiled binary."
+        echo "[-] WARNING: Core WireGuard present, but NEON hardware crypto symbols missing." >&2
+        echo "    Your custom Kconfig fragments may have failed to layer onto Bazel." >&2
         exit 1
     fi
 fi
