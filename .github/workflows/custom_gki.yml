@@ -140,10 +140,11 @@ jobs:
           bash ./scripts/fix_susfs_rejections.sh
 
       - name: Configure Kconfigs and Fragments
+        env:
+          WITH_WG: ${{ inputs.build_wg }}
         run: |
           chmod +x scripts/configure_kconfigs.sh
           ./scripts/configure_kconfigs.sh
-          echo ">>> Kconfig injection phase complete..."
 
       - name: Run Custom Patches
         run: |
