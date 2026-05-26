@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Configuration: Toggle WireGuard integration via ENV (Defaults to false)
+# Configuration: Toggle custom Kconfig integration via ENV (Defaults to false)
 WITH_WG=${WITH_WG:-false}
 
-echo "=== Step 1: Configuring Kconfigs & Fragments ==="
+echo "=== Configuring Kconfigs & Fragments ==="
 
 cd kernel_workspace
 
@@ -14,11 +14,11 @@ for f in common/android/abi_gki_protected_exports*; do
 done
 
 if [ "$WITH_WG" = "true" ]; then
-    echo ">>> Integrating WireGuard Kconfig Fragments..."
+    echo ">>> Integrating Kconfig Fragments..."
     cd common
     
     # Create the configuration fragment
-    cat > wireguard_fragment << 'EOF'
+    cat > custom_fragment << 'EOF'
 # --- CORE WIREGUARD ---
 CONFIG_WIREGUARD=y
 CONFIG_NET_UDP_TUNNEL=y
@@ -35,17 +35,20 @@ CONFIG_NETFILTER_XT_MATCH_HASHLIMIT=y
 CONFIG_NETFILTER_XT_MATCH_LENGTH=y
 CONFIG_NETFILTER_XT_MATCH_MARK=y
 CONFIG_NETFILTER_XT_MATCH_POLICY=y
+
+# --- ADDITIONAL CONFIGS ---
+
 EOF
 
     # Inject fragment targeting into the Bazel build rules
-    echo 'exports_files(["wireguard_fragment"])' >> BUILD.bazel
-    sed -i '/name = "kernel_aarch64",/a \    post_defconfig_fragments = ["wireguard_fragment"],' BUILD.bazel
+    echo 'exports_files(["custom_fragment"])' >> BUILD.bazel
+    sed -i '/name = "kernel_aarch64",/a \    post_defconfig_fragments = ["custom_fragment"],' BUILD.bazel
     
     # Hide the untracked fragment from standard git tracking status
-    echo "wireguard_fragment" >> .git/info/exclude
+    echo "custom_fragment" >> .git/info/exclude
     cd ..
 else
-    echo ">>> Skipping WireGuard configuration..."
+    echo ">>> Skipping custom Kconfig configuration..."
 fi
 
 cd ..
