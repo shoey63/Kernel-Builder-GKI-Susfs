@@ -139,6 +139,11 @@ jobs:
         run: |
           bash ./scripts/fix_susfs_rejections.sh
 
+      - name: Configure Kconfigs and Fragments
+        run: |
+          chmod +x scripts/configure_kconfigs.sh
+          ./scripts/configure_kconfigs.sh
+
       - name: Run Custom Patches
         run: |
           # Check if file exists and has executable content.
