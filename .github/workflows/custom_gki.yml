@@ -45,7 +45,7 @@ on:
         type: string
 
       build_wg:
-        description: "Build with WireGuard integration?"
+        description: "Build with custom Kconfig integration? (default=Wireguard)"
         required: false
         type: boolean
         default: false
@@ -143,6 +143,7 @@ jobs:
         run: |
           chmod +x scripts/configure_kconfigs.sh
           ./scripts/configure_kconfigs.sh
+          echo ">>> Kconfig injection phase complete..."
 
       - name: Run Custom Patches
         run: |
