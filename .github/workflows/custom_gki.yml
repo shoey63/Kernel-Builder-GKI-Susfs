@@ -83,8 +83,24 @@ jobs:
           haskell: false
           large-packages: false
           docker-images: false
-          swap-storage: true
+          swap-storage: false
 
+      - name: Create Manual 16GB Swap File
+        run: |
+          echo "=== Freeing up any existing partial swap ==="
+          sudo swapoff -a
+          if [ -f /swapfile ]; then sudo rm -f /swapfile; fi
+        
+          echo "=== Allocating 16GB Swap ==="
+          # 105GB available disk space is more than enough for a 16GB swapfile
+          sudo dd if=/dev/zero of=/swapfile bs=1M count=16384
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+        
+          echo "=== Verified Memory Configuration ==="
+          free -h
+     
       - name: Setup repo tool
         run: |
           mkdir -p "$HOME/bin"
