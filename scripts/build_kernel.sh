@@ -12,17 +12,49 @@ echo ">>> Marking repo as clean (sanitizes all custom configuration & source mod
 # Dynamically safeguards all modifications 
 git -C common ls-files -m | xargs -r git -C common update-index --assume-unchanged
 
-echo ">>> Commencing build: g$OFFICIAL_HASH"
-tools/bazel run --config=local --config=stamp \
-  --action_env=SOURCE_DATE_EPOCH="$OFFICIAL_DATE" \
-  --action_env=STABLE_BUILD_VERSION="g$OFFICIAL_HASH" \
-  --action_env=KLEAF_KERNEL_BUILD_VERSION="g$OFFICIAL_HASH" \
-  --action_env=KLEAF_SKIP_ABI_CHECKS=true \
-  --action_env=KLEAF_USER=android-build \
-  //common:kernel_aarch64_dist \
-  -- \
-  --destdir=out/dist
-  
+# Replace your tools/bazel execution block with a branch-aware condition:
+
+if [ -f "tools/bazel" ]; then
+    echo ">>> Modern Kleaf/Bazel ecosystem detected..."
+    tools/bazel run --config=local --config=stamp \
+      --action_env=SOURCE_DATE_EPOCH="$OFFICIAL_DATE" \
+      --action_env=STABLE_BUILD_VERSION="g$OFFICIAL_HASH" \
+      --action_env=KLEAF_KERNEL_BUILD_VERSION="g$OFFICIAL_HASH" \
+      --action_env=KLEAF_SKIP_ABI_CHECKS=true \
+      --action_env=KLEAF_USER=android-build \
+      //common:kernel_aarch64_dist \
+      -- \
+      --destdir=out/dist
+else
+    echo ">>> Legacy Hermetic Make ecosystem detected (5.10 or older)..."
+    
+    # Ensure our standardized output folder exists
+    mkdir -p out/dist
+    
+    # 1. Export standard environment variables for legacy build.sh
+    export KERNEL_DIR="common"
+    export BUILD_CONFIG="common/build.config.gki.aarch64"
+    export SOURCE_DATE_EPOCH="$OFFICIAL_DATE"
+    
+    # Force legacy build to output directly to our unified dist folder
+    export DIST_DIR="out/dist"
+    
+    # Inject your official hash directly into the legacy version compilation string
+    export EXTRA_LINUX_VERSION="-g${OFFICIAL_HASH}"
+    
+    # 2. Run the legacy orchestration script
+    if [ -f "build/build.sh" ]; then
+        echo "[+] Invoking build/build.sh..."
+        bash build/build.sh
+    elif [ -f "build.sh" ]; then
+        echo "[+] Invoking build.sh..."
+        bash build.sh
+    else
+        echo "[-] ERROR: Legacy build.sh orchestrator not found!" >&2
+        exit 1
+    fi
+fi
+
 IMAGE_PATH="$(find out/dist -type f -name 'Image' | head -n1)"
 
 if [ -z "${IMAGE_PATH}" ] || [ ! -f "${IMAGE_PATH}" ]; then
