@@ -8,7 +8,7 @@ echo "=== Step 3: Initializing Bazel Execution Engine ==="
 cd kernel_workspace
 mkdir -p ../out out/dist
 
-echo ">>> Marking repo as clean (cloaking all custom configuration & source modifications)..."
+echo ">>> Marking repo as clean (sanitizes all custom configuration & source modifications)..."
 # Dynamically safeguards all modifications 
 git -C common ls-files -m | xargs -r git -C common update-index --assume-unchanged
 
@@ -32,21 +32,19 @@ fi
 
 echo ">>> Selected Image: ${IMAGE_PATH}"
 
+cp -f "${IMAGE_PATH}" ../out/Image
+
 echo ">>> Extracting version string..."
 strings ../out/Image | grep "Linux version" | head -n 1
 
-cp -f "${IMAGE_PATH}" ../out/Image
-
 if [ "$WITH_WG" = "true" ]; then
+    # verify wireguard core#
     echo ">>> Validating custom WireGuard & Hardware Crypto pipeline..."
-    
-    # 1. Verify the core module exists
     if ! strings ../out/Image | grep -qi "wireguard"; then
         echo "[-] ERROR: Core WireGuard engine missing from binary!" >&2
         exit 1
     fi
-
-    # 2. Verify the ultra-responsive ARM64 NEON pipeline compiled in
+    # confirm NEON flags
     if strings ../out/Image | grep -qE "chacha_neon|poly1305_blocks_neon"; then
         echo ">>> SUCCESS: WireGuard NEON hardware crypto acceleration validated!"
     else
