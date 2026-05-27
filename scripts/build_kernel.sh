@@ -31,6 +31,10 @@ if [ -z "${IMAGE_PATH}" ] || [ ! -f "${IMAGE_PATH}" ]; then
 fi
 
 echo ">>> Selected Image: ${IMAGE_PATH}"
+
+echo ">>> Extracting version string..."
+strings ../out/Image | grep "Linux version" | head -n 1
+
 cp -f "${IMAGE_PATH}" ../out/Image
 
 if [ "$WITH_WG" = "true" ]; then
