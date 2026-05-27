@@ -83,7 +83,7 @@ jobs:
           haskell: false
           large-packages: false
           docker-images: false
-          swap-storage: false
+          swap-storage: true
 
       - name: Setup repo tool
         run: |
