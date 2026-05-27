@@ -37,6 +37,7 @@ CONFIG_NETFILTER_XT_MATCH_MARK=y
 CONFIG_NETFILTER_XT_MATCH_POLICY=y
 
 # --- ADDITIONAL CONFIGS ---
+# <LIST EXTRA KERNEL CONFIGS HERE>
 
 EOF
 
@@ -44,7 +45,7 @@ EOF
     echo 'exports_files(["custom_fragment"])' >> BUILD.bazel
     sed -i '/name = "kernel_aarch64",/a \    post_defconfig_fragments = ["custom_fragment"],' BUILD.bazel
     
-    # Hide the untracked fragment from standard git tracking status
+    # Exclude the untracked fragment from standard git tracking status
     echo "custom_fragment" >> .git/info/exclude
     cd ..
 else
