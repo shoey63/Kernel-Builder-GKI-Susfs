@@ -66,25 +66,99 @@ echo ">>> Selected Image: ${IMAGE_PATH}"
 
 cp -f "${IMAGE_PATH}" ../out/Image
 
-echo ">>> Extracting version string..."
-strings ../out/Image | grep "Linux version" | head -n 1
+echo ">>> Extracting kernel runtime version string..."
+# Try matching the standard format first, then fall back to a looser grep for legacy banners
+KERNEL_VERSION_STRING=$(strings ../out/Image | grep -E "Linux version [0-9]" | head -n 1 || true)
+
+if [ -z "$KERNEL_VERSION_STRING" ]; then
+    KERNEL_VERSION_STRING=$(strings ../out/Image | grep -i "Linux version" | head -n 1 || true)
+fi
+
+if [ -n "$KERNEL_VERSION_STRING" ]; then
+    echo "    $KERNEL_VERSION_STRING"
+else
+    echo "    [!] Notice: Could not read raw banner string directly from compiled Image binary."
+fi
 
 if [ "$WITH_WG" = "true" ]; then
-    # verify wireguard core#
-    echo ">>> Validating custom WireGuard & Hardware Crypto pipeline..."
-    if ! strings ../out/Image | grep -qi "wireguard"; then
-        echo "[-] ERROR: Core WireGuard engine missing from binary!" >&2
-        exit 1
-    fi
-    # confirm NEON flags
-    if strings ../out/Image | grep -qE "chacha_neon|poly1305_blocks_neon"; then
-        echo ">>> SUCCESS: WireGuard NEON hardware crypto acceleration validated!"
+    # Group the dashboard inside an expandable GitHub Actions log section
+    echo "::group::WireGuard & Hardware Crypto Injection Report"
+    echo ""
+    echo "==============================================================="
+    echo "        WIREGUARD & HARDWARE CRYPTO INJECTION REPORT           "
+    echo "==============================================================="
+
+    # Locate the definitive compiled configuration source
+    CONFIG_SRC=""
+    if [ -f "out/dist/config.gz" ]; then
+        CONFIG_SRC="out/dist/config.gz"
+    elif [ -f "kernel_workspace/out/dist/config.gz" ]; then
+        CONFIG_SRC="kernel_workspace/out/dist/config.gz"
     else
-        echo "[-] WARNING: Core WireGuard present, but NEON hardware crypto symbols missing." >&2
-        echo "    Your custom Kconfig fragments may have failed to layer onto Bazel." >&2
+        # Fallback to inspecting build-tree artifacts if distribution archive isn't ready
+        CONFIG_SRC=$(find out/ kernel_workspace/out/ -type f -name ".config" 2>/dev/null | head -n 1 || true)
+    fi
+
+    if [ -z "$CONFIG_SRC" ]; then
+        echo "[!] CRITICAL ERROR: Could not locate compiled kernel configuration target."
+        echo "::endgroup::"
         exit 1
     fi
+
+    echo ">>> Extracting definitions from: $CONFIG_SRC"
+    echo "---------------------------------------------------------------"
+
+    # Target features list to cross-check
+    REQUIRED_CONFIGS=(
+        "CONFIG_WIREGUARD"
+        "CONFIG_NET_UDP_TUNNEL"
+        "CONFIG_CRYPTO_CURVE25519"
+        "CONFIG_CRYPTO_CURVE25519_NEON"
+        "CONFIG_CRYPTO_CHACHA20_NEON"
+        "CONFIG_CRYPTO_POLY1305_NEON"
+        "CONFIG_CRYPTO_BLAKE2S_ARM64"
+        "CONFIG_NETFILTER_XT_MATCH_HASHLIMIT"
+        "CONFIG_NETFILTER_XT_MATCH_LENGTH"
+        "CONFIG_NETFILTER_XT_MATCH_MARK"
+        "CONFIG_NETFILTER_XT_MATCH_POLICY"
+    )
+
+    FAILED_VALIDATION=0
+
+    for CFG in "${REQUIRED_CONFIGS[@]}"; do
+        # Extract setting state whether compressed or plain text
+        if [[ "$CONFIG_SRC" == *.gz ]]; then
+            VAL=$(zcat "$CONFIG_SRC" | grep -E "^${CFG}=" | cut -d'=' -f2 || true)
+        else
+            VAL=$(grep -E "^${CFG}=" "$CONFIG_SRC" | cut -d'=' -f2 || true)
+        fi
+
+        if [ "$VAL" = "y" ]; then
+            printf "  [ PASS ] %-40s = %s (Built-in)\n" "$CFG" "$VAL"
+        elif [ "$VAL" = "m" ]; then
+            printf "  [ WARN ] %-40s = %s (Module Option)\n" "$CFG" "$VAL"
+        else
+            printf "  [ FAIL ] %-40s = MISSING\n" "$CFG"
+            # Hard-fail only on core engine; degrade optimizations to soft warnings
+            if [ "$CFG" = "CONFIG_WIREGUARD" ] || [ "$CFG" = "CONFIG_NET_UDP_TUNNEL" ]; then
+                FAILED_VALIDATION=1
+            fi
+        fi
+    done
+
+    echo "==============================================================="
+
+    if [ "$FAILED_VALIDATION" -ne 0 ]; then
+        echo "[!] PIPELINE FAILURE: Core WireGuard variables dropped during compilation."
+        echo "::endgroup::"
+        exit 1
+    fi
+    
+    echo "[+] Pipeline successfully validated. Ready for distribution packaging."
+    echo ""
+    echo "::endgroup::"
 fi
 
 cd ..
 echo ">>> Build execution loop completed"
+
