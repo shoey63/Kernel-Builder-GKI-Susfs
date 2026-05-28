@@ -85,14 +85,14 @@ jobs:
           docker-images: false
           swap-storage: false
 
-      - name: Create Manual 8GB Swap File
+      - name: Create Manual 12GB Swap File
         run: |
           echo "=== Freeing up any existing partial swap ==="
           sudo swapoff -a
           if [ -f /swapfile ]; then sudo rm -f /swapfile; fi
         
-          echo "=== Allocating 8GB Swap ==="
-          sudo dd if=/dev/zero of=/swapfile bs=1M count=8192
+          echo "=== Allocating 12GB Swap ==="
+          sudo dd if=/dev/zero of=/swapfile bs=1M count=12288
           sudo chmod 600 /swapfile
           sudo mkswap /swapfile
           sudo swapon /swapfile
