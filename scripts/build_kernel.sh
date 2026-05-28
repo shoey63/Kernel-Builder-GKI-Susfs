@@ -3,7 +3,7 @@ set -euo pipefail
 
 WITH_WG=${WITH_WG:-false}
 
-echo "=== Step 3: Initializing Bazel Execution Engine ==="
+echo "=== Initializing Bazel Execution Engine ==="
 
 cd kernel_workspace
 mkdir -p ../out out/dist
@@ -12,8 +12,7 @@ echo ">>> Marking repo as clean (sanitizes all custom configuration & source mod
 # Dynamically safeguards all modifications 
 git -C common ls-files -m | xargs -r git -C common update-index --assume-unchanged
 
-# Replace your tools/bazel execution block with a branch-aware condition:
-
+# Build method 
 if [ -f "tools/bazel" ]; then
     echo ">>> Modern Kleaf/Bazel ecosystem detected..."
     tools/bazel run --config=local --config=stamp \
@@ -28,7 +27,6 @@ if [ -f "tools/bazel" ]; then
 else
     echo ">>> Legacy Hermetic Make ecosystem detected (5.10 or older)..."
     
-    # Ensure our standardized output folder exists
     mkdir -p out/dist
     
     # 1. Export standard environment variables for legacy build.sh
@@ -36,10 +34,12 @@ else
     export BUILD_CONFIG="common/build.config.gki.aarch64"
     export SOURCE_DATE_EPOCH="$OFFICIAL_DATE"
     
-    # Force legacy build to output directly to our unified dist folder
+    # Inject the fragment
+    export EXTRA_DEFCONFIG_FRAGMENTS="custom_legacy.fragment"
+
     export DIST_DIR="out/dist"
     
-    # Inject your official hash directly into the legacy version compilation string
+    # Inject official hash
     export EXTRA_LINUX_VERSION="-g${OFFICIAL_HASH}"
     
     # 2. Run the legacy orchestration script
