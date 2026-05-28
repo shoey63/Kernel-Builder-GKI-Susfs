@@ -52,11 +52,9 @@ EOF
         echo "custom_fragment" >> .git/info/exclude
 
     else
-        echo ">>> Legacy Make detected (5.10 or older): Appending directly to gki_defconfig..."
+        echo ">>> Legacy Make detected (5.10 or older): Generating fragment..."
         
-        # Append configurations directly to the base defconfig blueprint
-        cat >> arch/arm64/configs/gki_defconfig << 'EOF'
-
+        cat > arch/arm64/configs/custom_legacy.fragment << 'EOF'
 # ==============================================================================
 # CUSTOM ADVANCED CONFIGS & WIREGUARD INTEGRATION
 # ==============================================================================
