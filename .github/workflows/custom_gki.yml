@@ -144,7 +144,7 @@ jobs:
       - name: Integrate SUSFS common-side
         if: inputs.enable_ksu_susfs == true
         env:
-          SUSFS_NEXT_URL: https://gitlab.com/simonpunk/susfs4ksu.git
+          SUSFS_NEXT_URL: https://gitlab.com/shoey63/susfs4ksu.git
           SUSFS_NEXT_REF: ${{ inputs.susfs_branch }}
         run: |
           bash ./scripts/integrate_susfs_next.sh
