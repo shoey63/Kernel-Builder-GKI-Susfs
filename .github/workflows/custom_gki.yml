@@ -77,12 +77,12 @@ jobs:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         with:
-          tool-cache: false
+          tool-cache: true
           android: true
           dotnet: true
           haskell: false
           large-packages: false
-          docker-images: false
+          docker-images: true
           swap-storage: false
 
       - name: Create Manual 12GB Swap File
@@ -92,7 +92,7 @@ jobs:
           if [ -f /swapfile ]; then sudo rm -f /swapfile; fi
         
           echo "=== Allocating 12GB Swap ==="
-          sudo dd if=/dev/zero of=/swapfile bs=1M count=12288
+          sudo fallocate -l 12G /swapfile
           sudo chmod 600 /swapfile
           sudo mkswap /swapfile
           sudo swapon /swapfile
