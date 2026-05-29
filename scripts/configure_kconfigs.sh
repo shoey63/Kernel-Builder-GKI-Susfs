@@ -14,11 +14,47 @@ for f in common/android/abi_gki_protected_exports*; do
 done
 
 if [ "$WITH_WG" = "true" ]; then
-    echo ">>> Integrating Kconfig Fragments..."
+    echo ">>> Integrating Kconfig Configurations..."
     cd common
     
-    # Create the configuration fragment
-    cat > custom_fragment << 'EOF'
+    # Check if we are in a modern Bazel ecosystem
+    if [ -f "BUILD.bazel" ]; then
+        echo ">>> Modern Bazel detected: Injecting via post_defconfig_fragments..."
+        
+        # Create the configuration fragment
+        cat > custom_fragment << 'EOF'
+# --- CORE WIREGUARD ---
+CONFIG_WIREGUARD=y
+CONFIG_NET_UDP_TUNNEL=y
+
+# --- ARM64 HARDWARE CRYPTO ACCELERATION ---
+CONFIG_CRYPTO_CHACHA20_NEON=y
+CONFIG_CRYPTO_POLY1305_NEON=y
+
+# --- ANDROID NETD ROUTING HOOKS ---
+CONFIG_NETFILTER_XT_MATCH_HASHLIMIT=y
+CONFIG_NETFILTER_XT_MATCH_LENGTH=y
+CONFIG_NETFILTER_XT_MATCH_MARK=y
+CONFIG_NETFILTER_XT_MATCH_POLICY=y
+
+# --- ADDITIONAL CONFIGS ---
+# <LIST EXTRA KERNEL CONFIGS HERE>
+EOF
+
+        # Inject fragment targeting into the Bazel build rules
+        echo 'exports_files(["custom_fragment"])' >> BUILD.bazel
+        sed -i '/name = "kernel_aarch64",/a \    post_defconfig_fragments = ["custom_fragment"],' BUILD.bazel
+        
+        # Exclude the untracked fragment from standard git tracking status
+        echo "custom_fragment" >> .git/info/exclude
+
+    else
+        echo ">>> Legacy Make detected (5.10 or older): Generating fragment..."
+        
+        cat > arch/arm64/configs/custom_legacy.fragment << 'EOF'
+# ==============================================================================
+# CUSTOM ADVANCED CONFIGS & WIREGUARD INTEGRATION
+# ==============================================================================
 # --- CORE WIREGUARD ---
 CONFIG_WIREGUARD=y
 CONFIG_NET_UDP_TUNNEL=y
@@ -38,15 +74,9 @@ CONFIG_NETFILTER_XT_MATCH_POLICY=y
 
 # --- ADDITIONAL CONFIGS ---
 # <LIST EXTRA KERNEL CONFIGS HERE>
-
 EOF
-
-    # Inject fragment targeting into the Bazel build rules
-    echo 'exports_files(["custom_fragment"])' >> BUILD.bazel
-    sed -i '/name = "kernel_aarch64",/a \    post_defconfig_fragments = ["custom_fragment"],' BUILD.bazel
+    fi
     
-    # Exclude the untracked fragment from standard git tracking status
-    echo "custom_fragment" >> .git/info/exclude
     cd ..
 else
     echo ">>> Skipping custom Kconfig configuration..."
