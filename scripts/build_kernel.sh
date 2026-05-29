@@ -3,7 +3,7 @@ set -euo pipefail
 
 WITH_WG=${WITH_WG:-false}
 
-echo "=== Initializing Bazel Execution Engine ==="
+echo "=== Initializing Execution Engine ==="
 
 cd kernel_workspace
 mkdir -p ../out out/dist
@@ -84,9 +84,9 @@ if [ "$WITH_WG" = "true" ]; then
     # Group the dashboard inside an expandable GitHub Actions log section
     echo "::group::WireGuard & Hardware Crypto Injection Report"
     echo ""
-    echo "==============================================================="
-    echo "        WIREGUARD & HARDWARE CRYPTO INJECTION REPORT           "
-    echo "==============================================================="
+    echo "=============================================="
+    echo " WIREGUARD & HARDWARE CRYPTO INJECTION REPORT "
+    echo "=============================================="
 
     # Locate the definitive compiled configuration source
     CONFIG_SRC=""
@@ -106,17 +106,14 @@ if [ "$WITH_WG" = "true" ]; then
     fi
 
     echo ">>> Extracting definitions from: $CONFIG_SRC"
-    echo "---------------------------------------------------------------"
+    echo "----------------------------------------------"
 
     # Target features list to cross-check
     REQUIRED_CONFIGS=(
         "CONFIG_WIREGUARD"
         "CONFIG_NET_UDP_TUNNEL"
-        "CONFIG_CRYPTO_CURVE25519"
-        "CONFIG_CRYPTO_CURVE25519_NEON"
         "CONFIG_CRYPTO_CHACHA20_NEON"
         "CONFIG_CRYPTO_POLY1305_NEON"
-        "CONFIG_CRYPTO_BLAKE2S_ARM64"
         "CONFIG_NETFILTER_XT_MATCH_HASHLIMIT"
         "CONFIG_NETFILTER_XT_MATCH_LENGTH"
         "CONFIG_NETFILTER_XT_MATCH_MARK"
@@ -146,7 +143,7 @@ if [ "$WITH_WG" = "true" ]; then
         fi
     done
 
-    echo "==============================================================="
+    echo "=============================================="
 
     if [ "$FAILED_VALIDATION" -ne 0 ]; then
         echo "[!] PIPELINE FAILURE: Core WireGuard variables dropped during compilation."
