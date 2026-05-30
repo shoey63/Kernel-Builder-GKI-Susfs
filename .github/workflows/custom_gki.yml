@@ -82,7 +82,7 @@ jobs:
           dotnet: true
           haskell: false
           large-packages: false
-          docker-images: true
+          docker-images: false
           swap-storage: false
 
       - name: Create Manual 12GB Swap File
