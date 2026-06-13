@@ -47,7 +47,6 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   MANIFEST_URL: https://android.googlesource.com/kernel/manifest
-  MANIFEST_BRANCH: ${{ env.MANIFEST_BRANCH }}
   OTA_URL: ${{ inputs.ota_url }}
 
 jobs:
@@ -209,7 +208,6 @@ jobs:
         if: inputs.enable_ksu_susfs == true
         env:
           SUSFS_NEXT_URL: https://gitlab.com/shoey63/susfs4ksu.git
-          env:
           SUSFS_NEXT_REF: ${{ env.SUSFS_BRANCH }}
         run: |
           bash ./scripts/integrate_susfs_next.sh
@@ -279,7 +277,7 @@ jobs:
             --image "out/Image" \
             --magiskboot "./tools/magiskboot" \
             --outdir "out/final" \
-            --outname "${{ inputs.manifest_branch }}.img" \
+            --outname "${{ env.MANIFEST_BRANCH }}.img" \
             --workdir "work/repack-tmp"
             
       - name: Prepare Final Artifacts
