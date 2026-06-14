@@ -178,7 +178,7 @@ jobs:
         if: inputs.enable_ksu_susfs == true
         env:
           KSU_VARIANT_REPO_URL: https://github.com/shoey63/${{ inputs.root_manager }}.git
-          KSU_VARIANT_REF: ci-runner
+          KSU_VARIANT_REF: ci-runner-canary
           KSU_VARIANT_HOOK_MODE: ""
         run: |
           bash ./scripts/inject_ksu_variant.sh "${{ inputs.root_manager }}"
@@ -215,7 +215,7 @@ jobs:
       - name: Integrate SUSFS common-side
         if: inputs.enable_ksu_susfs == true
         env:
-          SUSFS_NEXT_URL: https://gitlab.com/shoey63/susfs4ksu.git
+          SUSFS_NEXT_URL: https://gitlab.com/simonpunk/susfs4ksu.git
           SUSFS_NEXT_REF: ${{ env.SUSFS_BRANCH }}
         run: |
           bash ./scripts/integrate_susfs_next.sh
