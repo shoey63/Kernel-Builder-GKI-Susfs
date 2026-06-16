@@ -51,33 +51,29 @@ fi
 if [ -f "common/fs/namespace.c.rej" ]; then
   echo ">>> Found namespace.c.rej. Applying manual fix..."
   
-  # Inject the headers before pnode.h
-  sed -i '/#include "pnode.h"/i\
+  # INJECTION: Drop headers, externs, and macros together right above the first include
+  if ! grep -q 'susfs_is_sdcard_android_data_not_decrypted' common/fs/namespace.c; then
+    sed -i '0,/^#include/ {
+      /^#include/i\
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT\
 #include <linux/susfs_def.h>\
-#endif \/\/ #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT\
-' common/fs/namespace.c
-
-  # Inject the externs and macros after trace/hooks/blk.h
-  sed -i '/#include <trace\/hooks\/blk.h>/a\
-\
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT\
 extern bool susfs_is_current_ksu_domain(void);\
 extern struct static_key_true susfs_is_sdcard_android_data_not_decrypted;\
-\
-#define CL_COPY_MNT_NS BIT(25) \/* used by copy_mnt_ns() *\/\
-\
-#endif \/\/ #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT\
-' common/fs/namespace.c
+#define CL_COPY_MNT_NS BIT(25) /* used by copy_mnt_ns() */\
+#endif // CONFIG_KSU_SUSFS_SUS_MOUNT\
 
-  # Sanity Check: Did the injection actually write to the file?
-  if grep -q 'susfs_is_sdcard_android_data_not_decrypted' common/fs/namespace.c; then
-    echo "  -> namespace.c fix verified!"
+    }' common/fs/namespace.c
+  fi
+
+  # Sanity Check: Verify BOTH the header and the macro were injected
+  if grep -q 'susfs_def.h' common/fs/namespace.c && grep -q 'susfs_is_sdcard_android_data_not_decrypted' common/fs/namespace.c; then
+    echo "  -> namespace.c fix verified (Header & Macros injected)!"
     rm "common/fs/namespace.c.rej"
   else
-    echo "  [-] WARNING: namespace.c fix failed to inject! The anchor line may have changed." >&2
+    echo "  [-] WARNING: namespace.c fix failed! Either the header or macros are missing." >&2
   fi
 fi
+
 
 # 4. Fix fs/proc/task_mmu.c
 if [ -f "common/fs/proc/task_mmu.c.rej" ]; then
