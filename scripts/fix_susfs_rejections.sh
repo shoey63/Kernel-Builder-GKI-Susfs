@@ -79,32 +79,6 @@ extern struct static_key_true susfs_is_sdcard_android_data_not_decrypted;\
   fi
 fi
 
-# 4. Fix fs/proc/task_mmu.c
-if [ -f "common/fs/proc/task_mmu.c.rej" ]; then
-  echo ">>> Found task_mmu.c.rej. Applying manual fix..."
-  
-  # Inject the SUS_MAP check inside show_smap() right after 'vma' is declared.
-  # We use a sed range from the function signature down to the vma declaration.
-  sed -i '/static int show_smap(struct seq_file \*m, void \*v)/,/struct vm_area_struct \*vma = v;/ {
-    /struct vm_area_struct \*vma = v;/a\
-\
-#ifdef CONFIG_KSU_SUSFS_SUS_MAP\
-	if (vma->vm_file) {\
-		if (SUSFS_IS_INODE_SUS_MAP(file_inode(vma->vm_file)))\
-			return 0;\
-	}\
-#endif \/\/ #ifdef CONFIG_KSU_SUSFS_SUS_MAP
-  }' common/fs/proc/task_mmu.c
-
-  # Sanity Check
-  if grep -q 'SUSFS_IS_INODE_SUS_MAP' common/fs/proc/task_mmu.c; then
-    echo "  -> task_mmu.c fix verified!"
-    rm "common/fs/proc/task_mmu.c.rej"
-  else
-    echo "  [-] WARNING: task_mmu.c fix failed to inject! The anchor line may have changed." >&2
-  fi
-fi
-
 
 # 5. Final Validation
 echo ">>> Checking for unresolved patch rejections..."
