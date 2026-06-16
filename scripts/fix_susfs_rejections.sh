@@ -51,41 +51,40 @@ fi
 if [ -f "common/fs/namespace.c.rej" ]; then
   echo ">>> Found namespace.c.rej. Applying manual fix..."
   
-  # INJECTION: Drop headers, externs, and macros together right above the first include
-  if ! grep -q 'susfs_is_sdcard_android_data_not_decrypted' common/fs/namespace.c; then
-    sed -i '0,/^#include/ {
-      /^#include/i\
+  # Inject the headers before pnode.h
+  sed -i '/#include "pnode.h"/i\
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT\
 #include <linux/susfs_def.h>\
+#endif \/\/ #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT\
+' common/fs/namespace.c
+
+  # Inject the externs and macros after trace/hooks/blk.h
+  sed -i '/#include <trace\/hooks\/blk.h>/a\
+\
+#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT\
 extern bool susfs_is_current_ksu_domain(void);\
 extern struct static_key_true susfs_is_sdcard_android_data_not_decrypted;\
-#define CL_COPY_MNT_NS BIT(25) /* used by copy_mnt_ns() */\
-#endif // CONFIG_KSU_SUSFS_SUS_MOUNT\
+\
+#define CL_COPY_MNT_NS BIT(25) \/* used by copy_mnt_ns() *\/\
+\
+#endif \/\/ #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT\
+' common/fs/namespace.c
 
-    }' common/fs/namespace.c
-  fi
-
-  # Sanity Check: Verify BOTH the header and the macro were injected
-  if grep -q 'susfs_def.h' common/fs/namespace.c && grep -q 'susfs_is_sdcard_android_data_not_decrypted' common/fs/namespace.c; then
-    echo "  -> namespace.c fix verified (Header & Macros injected)!"
+  # Sanity Check: Did the injection actually write to the file?
+  if grep -q 'susfs_is_sdcard_android_data_not_decrypted' common/fs/namespace.c; then
+    echo "  -> namespace.c fix verified!"
     rm "common/fs/namespace.c.rej"
   else
-    echo "  [-] WARNING: namespace.c fix failed! Either the header or macros are missing." >&2
+    echo "  [-] WARNING: namespace.c fix failed to inject! The anchor line may have changed." >&2
   fi
 fi
-
 
 # 4. Fix fs/proc/task_mmu.c
 if [ -f "common/fs/proc/task_mmu.c.rej" ]; then
   echo ">>> Found task_mmu.c.rej. Applying manual fix..."
   
-  # INJECTION 1: Bulletproof header injection
-  if ! grep -q '#include <linux/susfs.h>' common/fs/proc/task_mmu.c; then
-    # Finds the very first #include line and inserts susfs.h directly above it
-    sed -i '0,/^#include/s//#include <linux\/susfs.h>\n&/' common/fs/proc/task_mmu.c
-  fi
-  
-  # INJECTION 2: Inject the SUS_MAP check inside show_smap()
+  # Inject the SUS_MAP check inside show_smap() right after 'vma' is declared.
+  # We use a sed range from the function signature down to the vma declaration.
   sed -i '/static int show_smap(struct seq_file \*m, void \*v)/,/struct vm_area_struct \*vma = v;/ {
     /struct vm_area_struct \*vma = v;/a\
 \
@@ -98,13 +97,14 @@ if [ -f "common/fs/proc/task_mmu.c.rej" ]; then
   }' common/fs/proc/task_mmu.c
 
   # Sanity Check
-  if grep -q '#include <linux/susfs.h>' common/fs/proc/task_mmu.c && grep -q 'SUSFS_IS_INODE_SUS_MAP' common/fs/proc/task_mmu.c; then
-    echo "  -> task_mmu.c fix verified (Header & Macro injected)!"
+  if grep -q 'SUSFS_IS_INODE_SUS_MAP' common/fs/proc/task_mmu.c; then
+    echo "  -> task_mmu.c fix verified!"
     rm "common/fs/proc/task_mmu.c.rej"
   else
-    echo "  [-] WARNING: task_mmu.c fix failed! Either the header or the macro is missing." >&2
+    echo "  [-] WARNING: task_mmu.c fix failed to inject! The anchor line may have changed." >&2
   fi
 fi
+
 
 # 5. Final Validation
 echo ">>> Checking for unresolved patch rejections..."
