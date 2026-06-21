@@ -168,60 +168,65 @@ fi
 if [ -f "fs/readdir.c.rej" ]; then
     echo ">>> Found readdir.c.rej. Applying manual fix..."
     
-    # We now inject the entire block as a singular, scoped entity to prevent scope-leakage
-    # This prevents 'unused variable' errors because it's now all contained inside one #ifdef
-    sed -i '/f = fdget_pos(fd);/i\
+    # 7a. Inject variables
+    if ! grep -q "int initial_count = count;" fs/readdir.c; then
+        sed -i '/f = fdget_pos(fd);/i\
 #ifdef CONFIG_ZEROMOUNT\
     int initial_count = count;\
+#endif\
+' fs/readdir.c
+    fi
+
+    # 7b. Inject bypass check
+    if ! grep -q "goto skip_real_iterate;" fs/readdir.c; then
+        sed -i '/return -EBADF;/a\
+#ifdef CONFIG_ZEROMOUNT\
     if (f.file->f_pos >= ZEROMOUNT_MAGIC_POS) {\
         error = 0;\
         goto skip_real_iterate;\
     }\
 #endif\
 ' fs/readdir.c
+    fi
 
-    # Now we inject the logic block, ensuring the label is IN the same #ifdef scope
-    sed -i '/struct linux_dirent __user \*.*lastdirent/i\
+    # 7c. Inject skip_real_iterate logic using awk to place it safely OUTSIDE the if blocks
+    if ! grep -q "skip_real_iterate:" fs/readdir.c; then
+        awk '/if \(buf\.prev_reclen\) \{/ {
+            cnt++
+            if (cnt == 1 || cnt == 3) {
+                print "#ifdef CONFIG_ZEROMOUNT"
+                print "skip_real_iterate:"
+                print "    if (error >= 0 && !signal_pending(current)) {"
+                print "        zeromount_inject_dents(f.file, (void __user **)&dirent, &count, &f.file->f_pos);"
+                print "        if (count != initial_count)"
+                print "            error = initial_count - count;"
+                print "        goto zm_out;"
+                print "    }"
+                print "#endif"
+            } else if (cnt == 2) {
+                print "#ifdef CONFIG_ZEROMOUNT"
+                print "skip_real_iterate:"
+                print "    if (error >= 0 && !signal_pending(current)) {"
+                print "        zeromount_inject_dents64(f.file, (void __user **)&dirent, &count, &f.file->f_pos);"
+                print "        if (count != initial_count)"
+                print "            error = initial_count - count;"
+                print "        goto zm_out;"
+                print "    }"
+                print "#endif"
+            }
+        }
+        {print}' fs/readdir.c > fs/readdir.c.tmp && mv fs/readdir.c.tmp fs/readdir.c
+    fi
+
+    # 7d. Inject zm_out label safely before the fdput_pos statement
+    if ! grep -q "zm_out:" fs/readdir.c; then
+        sed -i '/fdput_pos(f);/i\
 #ifdef CONFIG_ZEROMOUNT\
-skip_real_iterate:\
-    if (error >= 0 && !signal_pending(current)) {\
-        zeromount_inject_dents(f.file, (void __user **)&dirent, &count, &f.file->f_pos);\
-        if (count != initial_count)\
-            error = initial_count - count;\
-        goto zm_out;\
-    }\
 zm_out:\
 #endif\
 ' fs/readdir.c
-
-    sed -i '/struct linux_dirent64 __user \*.*lastdirent/i\
-#ifdef CONFIG_ZEROMOUNT\
-skip_real_iterate:\
-    if (error >= 0 && !signal_pending(current)) {\
-        zeromount_inject_dents64(f.file, (void __user **)&dirent, &count, &f.file->f_pos);\
-        if (count != initial_count)\
-            error = initial_count - count;\
-        goto zm_out;\
-    }\
-zm_out:\
-#endif\
-' fs/readdir.c
-
-    sed -i '/struct compat_linux_dirent __user \*.*lastdirent/i\
-#ifdef CONFIG_ZEROMOUNT\
-skip_real_iterate:\
-    if (error >= 0 && !signal_pending(current)) {\
-        zeromount_inject_dents(f.file, (void __user **)&dirent, &count, &f.file->f_pos);\
-        if (count != initial_count)\
-            error = initial_count - count;\
-        goto zm_out;\
-    }\
-zm_out:\
-#endif\
-' fs/readdir.c
-
-    # Remove the old zm_out injection since we now place it inside the block
-    sed -i '/fdput_pos(f);/d' fs/readdir.c 2>/dev/null || true
+    fi
+    
     rm -f fs/readdir.c.rej
 fi
 
