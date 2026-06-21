@@ -185,31 +185,33 @@ if [ -f "fs/readdir.c.rej" ]; then
     fi
 
     if ! grep -q "skip_real_iterate:" fs/readdir.c; then
-        awk '/^[[:space:]]*if \(buf\.prev_reclen\)/ {
-            cnt++
-            if (cnt == 1 || cnt == 3) {
-                print "#ifdef CONFIG_ZEROMOUNT"
-                print "skip_real_iterate:"
-                print "    if (error >= 0 && !signal_pending(current)) {"
-                print "        zeromount_inject_dents(f.file, (void __user **)&dirent, &count, &f.file->f_pos);"
-                print "        if (count != initial_count)"
-                print "            error = initial_count - count;"
-                print "        goto zm_out;"
-                print "    }"
-                print "#endif"
-            } else if (cnt == 2) {
-                print "#ifdef CONFIG_ZEROMOUNT"
-                print "skip_real_iterate:"
-                print "    if (error >= 0 && !signal_pending(current)) {"
+        # Dynamic look-ahead parsing: Adapts to any number of getdents functions
+        awk '
+        /^[[:space:]]*if \(buf\.prev_reclen\)/ {
+            buf_line = $0
+            getline next_line
+            
+            is_64 = index(next_line, "dirent64")
+            
+            print "#ifdef CONFIG_ZEROMOUNT"
+            print "skip_real_iterate:"
+            print "    if (error >= 0 && !signal_pending(current)) {"
+            if (is_64) {
                 print "        zeromount_inject_dents64(f.file, (void __user **)&dirent, &count, &f.file->f_pos);"
-                print "        if (count != initial_count)"
-                print "            error = initial_count - count;"
-                print "        goto zm_out;"
-                print "    }"
-                print "#endif"
+            } else {
+                print "        zeromount_inject_dents(f.file, (void __user **)&dirent, &count, &f.file->f_pos);"
             }
+            print "        if (count != initial_count)"
+            print "            error = initial_count - count;"
+            print "        goto zm_out;"
+            print "    }"
+            print "#endif"
+            print buf_line
+            print next_line
+            next
         }
-        {print}' fs/readdir.c > fs/readdir.c.tmp && mv fs/readdir.c.tmp fs/readdir.c
+        {print}
+        ' fs/readdir.c > fs/readdir.c.tmp && mv fs/readdir.c.tmp fs/readdir.c
     fi
 
     if ! grep -q "zm_out:" fs/readdir.c; then
