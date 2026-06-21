@@ -4,20 +4,36 @@ set -euo pipefail
 echo "=== Applying Custom Kernel Patches ==="
 cd kernel_workspace/common
 
-# 1. Grab your CI environment variables
-# Ensure your GitHub Actions YAML passes these, e.g., GKI_BRANCH="android15-6.6" and SU_VARIANT="KernelSU-Next"
-GKI_BRANCH=${GKI_BRANCH:-"android14-6.1"}
+echo ">>> Parsing Target Version from YAML Inputs..."
+# Fallback to 6.1 if the YAML didn't pass anything
+TARGET_RAW=${TARGET_VERSION:-"6.1"}
 SU_VARIANT=${SU_VARIANT:-"KernelSU-Next"}
 
-echo ">>> Target Environment: $GKI_BRANCH with $SU_VARIANT"
+# Extract the base version (turns 6.6.118 into 6.6)
+BASE_VER=$(echo "$TARGET_RAW" | cut -d. -f1,2)
 
-# 2. Construct the exact URL pointing to YOUR fork
+# Dynamically map the base version to the Super-Builders branch
+if [ "$BASE_VER" == "6.12" ]; then
+    GKI_BRANCH="android16-6.12"
+elif [ "$BASE_VER" == "6.6" ]; then
+    GKI_BRANCH="android15-6.6"
+elif [ "$BASE_VER" == "5.15" ]; then
+    GKI_BRANCH="android14-5.15"
+elif [ "$BASE_VER" == "5.10" ]; then
+    GKI_BRANCH="android13-5.10"
+else
+    GKI_BRANCH="android14-6.1"
+fi
+
+echo ">>> Target Environment Detected: $GKI_BRANCH (from input $TARGET_RAW) with $SU_VARIANT"
+
+# Construct the exact URL pointing to YOUR fork
 PATCH_URL="https://raw.githubusercontent.com/shoey63/Super-Builders/main/${GKI_BRANCH}/${SU_VARIANT}/patches/60_zeromount-${GKI_BRANCH}.patch"
 
 echo ">>> Fetching native ZeroMount patch directly from your Super-Builders fork..."
 echo "    -> $PATCH_URL"
 
-# 3. Download the patch dynamically
+# Download the patch dynamically
 if wget -qO native_zeromount.patch "$PATCH_URL"; then
     echo ">>> Successfully downloaded native patch! Injecting into kernel..."
     patch -p1 < native_zeromount.patch || echo "[-] Minor context mismatches detected. Passing to fixup routine..."
