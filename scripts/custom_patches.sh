@@ -4,8 +4,28 @@ set -euo pipefail
 echo "=== Applying Custom Kernel Patches ==="
 cd kernel_workspace/common
 
-echo ">>> Injecting ZeroMount Subsystem..."
-patch -p1 < ../../patches/60_zeromount-android14-6.1.patch || echo "[-] Context mismatches detected. Resolving dynamically..."
+# 1. Grab your CI environment variables
+# Ensure your GitHub Actions YAML passes these, e.g., GKI_BRANCH="android15-6.6" and SU_VARIANT="KernelSU-Next"
+GKI_BRANCH=${GKI_BRANCH:-"android14-6.1"}
+SU_VARIANT=${SU_VARIANT:-"KernelSU-Next"}
+
+echo ">>> Target Environment: $GKI_BRANCH with $SU_VARIANT"
+
+# 2. Construct the exact URL pointing to YOUR fork
+PATCH_URL="https://raw.githubusercontent.com/shoey63/Super-Builders/main/${GKI_BRANCH}/${SU_VARIANT}/patches/60_zeromount-${GKI_BRANCH}.patch"
+
+echo ">>> Fetching native ZeroMount patch directly from your Super-Builders fork..."
+echo "    -> $PATCH_URL"
+
+# 3. Download the patch dynamically
+if wget -qO native_zeromount.patch "$PATCH_URL"; then
+    echo ">>> Successfully downloaded native patch! Injecting into kernel..."
+    patch -p1 < native_zeromount.patch || echo "[-] Minor context mismatches detected. Passing to fixup routine..."
+else
+    echo "[-] WARNING: Could not find a native patch for $GKI_BRANCH / $SU_VARIANT on your fork."
+    echo "    -> Falling back to the universal 6.1 patch + dynamic fixups..."
+    patch -p1 < ../../patches/60_zeromount-android14-6.1.patch || true
+fi
 
 echo ">>> Starting ZeroMount patch fixup routine..."
 
