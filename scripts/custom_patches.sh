@@ -16,7 +16,7 @@ if ! grep -q "config ZEROMOUNT" fs/Kconfig; then
 fi
 rm -f fs/Kconfig.rej arch/arm64/configs/gki_defconfig.rej
 
-# 2. d_path.c (Resolves 5.10 missing header)
+# 2. d_path.c
 if [ -f "fs/d_path.c.rej" ]; then
     echo ">>> Found d_path.c.rej. Applying manual fix..."
     if ! grep -q "linux/zeromount.h" fs/d_path.c; then
@@ -29,7 +29,7 @@ if [ -f "fs/d_path.c.rej" ]; then
     rm -f fs/d_path.c.rej
 fi
 
-# 3. proc/base.c (Resolves 5.15 d_path spoofing)
+# 3. proc/base.c
 if [ -f "fs/proc/base.c.rej" ]; then
     echo ">>> Found base.c.rej. Applying manual fix..."
     if ! grep -q "zeromount_get_static_vpath" fs/proc/base.c; then
@@ -58,7 +58,7 @@ if [ -f "fs/proc/base.c.rej" ]; then
     rm -f fs/proc/base.c.rej
 fi
 
-# 4. proc/task_mmu.c (Resolves all header and 6.12 const pointer shifts)
+# 4. proc/task_mmu.c
 if [ -f "fs/proc/task_mmu.c.rej" ]; then
     echo ">>> Found task_mmu.c.rej. Applying manual fix..."
     if ! grep -q "linux/zeromount.h" fs/proc/task_mmu.c; then
@@ -78,11 +78,9 @@ if [ -f "fs/proc/task_mmu.c.rej" ]; then
     rm -f fs/proc/task_mmu.c.rej
 fi
 
-# 5. stat.c (Resolves 5.15 missing function definition & hooks)
+# 5. stat.c
 if [ -f "fs/stat.c.rej" ]; then
     echo ">>> Found stat.c.rej. Applying manual fix..."
-    
-    # Inject the massive function definition
     if ! grep -q "static inline int zeromount_stat_hook" fs/stat.c; then
         sed -i '/static int vfs_statx(/i\
 #ifdef CONFIG_ZEROMOUNT\
@@ -119,7 +117,6 @@ static inline int zeromount_stat_hook(int dfd, struct filename *filename, struct
 ' fs/stat.c
     fi
 
-    # Inject the hook call itself
     if ! grep -q "zeromount_stat_hook(dfd, filename" fs/stat.c; then
         if grep -q "CONFIG_KSU_SUSFS_UNICODE_FILTER" fs/stat.c; then
             sed -i '/#ifdef CONFIG_KSU_SUSFS_UNICODE_FILTER/i\
@@ -146,7 +143,7 @@ static inline int zeromount_stat_hook(int dfd, struct filename *filename, struct
     rm -f fs/stat.c.rej
 fi
 
-# 6. xattr.c (Resolves 6.6 mnt_userns -> idmap shift)
+# 6. xattr.c
 if [ -f "fs/xattr.c.rej" ]; then
     echo ">>> Found xattr.c.rej. Applying manual fix..."
     if ! grep -q "zeromount_spoof_xattr" fs/xattr.c; then
@@ -164,11 +161,10 @@ if [ -f "fs/xattr.c.rej" ]; then
     rm -f fs/xattr.c.rej
 fi
 
-# 7. readdir.c (Resolves the 6.6 and older getdents iteration restructuring)
+# 7. readdir.c
 if [ -f "fs/readdir.c.rej" ]; then
     echo ">>> Found readdir.c.rej. Applying manual fix..."
     
-    # 7a. Inject variables
     if ! grep -q "int initial_count = count;" fs/readdir.c; then
         sed -i '/f = fdget_pos(fd);/i\
 #ifdef CONFIG_ZEROMOUNT\
@@ -177,7 +173,6 @@ if [ -f "fs/readdir.c.rej" ]; then
 ' fs/readdir.c
     fi
 
-    # 7b. Inject bypass check
     if ! grep -q "goto skip_real_iterate;" fs/readdir.c; then
         sed -i '/return -EBADF;/a\
 #ifdef CONFIG_ZEROMOUNT\
@@ -189,9 +184,8 @@ if [ -f "fs/readdir.c.rej" ]; then
 ' fs/readdir.c
     fi
 
-    # 7c. Inject skip_real_iterate logic using awk to place it safely OUTSIDE the if blocks
     if ! grep -q "skip_real_iterate:" fs/readdir.c; then
-        awk '/if \(buf\.prev_reclen\) \{/ {
+        awk '/^[[:space:]]*if \(buf\.prev_reclen\)/ {
             cnt++
             if (cnt == 1 || cnt == 3) {
                 print "#ifdef CONFIG_ZEROMOUNT"
@@ -218,9 +212,8 @@ if [ -f "fs/readdir.c.rej" ]; then
         {print}' fs/readdir.c > fs/readdir.c.tmp && mv fs/readdir.c.tmp fs/readdir.c
     fi
 
-    # 7d. Inject zm_out label safely before the fdput_pos statement
     if ! grep -q "zm_out:" fs/readdir.c; then
-        sed -i '/fdput_pos(f);/i\
+        sed -i '/^[[:space:]]*fdput_pos(f);/i\
 #ifdef CONFIG_ZEROMOUNT\
 zm_out:\
 #endif\
