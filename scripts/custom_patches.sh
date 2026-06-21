@@ -167,27 +167,21 @@ fi
 # 7. readdir.c (Resolves the 6.6 and older getdents iteration restructuring)
 if [ -f "fs/readdir.c.rej" ]; then
     echo ">>> Found readdir.c.rej. Applying manual fix..."
-    if ! grep -q "int initial_count = count;" fs/readdir.c; then
-        sed -i '/f = fdget_pos(fd);/i\
+    
+    # We now inject the entire block as a singular, scoped entity to prevent scope-leakage
+    # This prevents 'unused variable' errors because it's now all contained inside one #ifdef
+    sed -i '/f = fdget_pos(fd);/i\
 #ifdef CONFIG_ZEROMOUNT\
     int initial_count = count;\
-#endif\
-' fs/readdir.c
-    fi
-
-    if ! grep -q "goto skip_real_iterate;" fs/readdir.c; then
-        sed -i '/return -EBADF;/a\
-#ifdef CONFIG_ZEROMOUNT\
     if (f.file->f_pos >= ZEROMOUNT_MAGIC_POS) {\
         error = 0;\
         goto skip_real_iterate;\
     }\
 #endif\
 ' fs/readdir.c
-    fi
 
-    if ! grep -q "skip_real_iterate:" fs/readdir.c; then
-        sed -i '/struct linux_dirent __user \*.*lastdirent/i\
+    # Now we inject the logic block, ensuring the label is IN the same #ifdef scope
+    sed -i '/struct linux_dirent __user \*.*lastdirent/i\
 #ifdef CONFIG_ZEROMOUNT\
 skip_real_iterate:\
     if (error >= 0 && !signal_pending(current)) {\
@@ -196,10 +190,11 @@ skip_real_iterate:\
             error = initial_count - count;\
         goto zm_out;\
     }\
+zm_out:\
 #endif\
 ' fs/readdir.c
 
-        sed -i '/struct linux_dirent64 __user \*.*lastdirent/i\
+    sed -i '/struct linux_dirent64 __user \*.*lastdirent/i\
 #ifdef CONFIG_ZEROMOUNT\
 skip_real_iterate:\
     if (error >= 0 && !signal_pending(current)) {\
@@ -208,10 +203,11 @@ skip_real_iterate:\
             error = initial_count - count;\
         goto zm_out;\
     }\
+zm_out:\
 #endif\
 ' fs/readdir.c
 
-        sed -i '/struct compat_linux_dirent __user \*.*lastdirent/i\
+    sed -i '/struct compat_linux_dirent __user \*.*lastdirent/i\
 #ifdef CONFIG_ZEROMOUNT\
 skip_real_iterate:\
     if (error >= 0 && !signal_pending(current)) {\
@@ -220,17 +216,12 @@ skip_real_iterate:\
             error = initial_count - count;\
         goto zm_out;\
     }\
-#endif\
-' fs/readdir.c
-    fi
-
-    if ! grep -q "zm_out:" fs/readdir.c; then
-        sed -i '/fdput_pos(f);/i\
-#ifdef CONFIG_ZEROMOUNT\
 zm_out:\
 #endif\
 ' fs/readdir.c
-    fi
+
+    # Remove the old zm_out injection since we now place it inside the block
+    sed -i '/fdput_pos(f);/d' fs/readdir.c 2>/dev/null || true
     rm -f fs/readdir.c.rej
 fi
 
