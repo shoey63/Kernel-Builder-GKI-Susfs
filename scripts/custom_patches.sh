@@ -197,75 +197,62 @@ if [ -f "fs/xattr.c.rej" ]; then
     rm -f fs/xattr.c.rej
 fi
 
-# 7. readdir.c
+# 7. readdir.c - Smarter injection with duplicate detection
 if [ -f "fs/readdir.c.rej" ]; then
-    echo ">>> Found readdir.c.rej. Applying manual fix..."
+    echo ">>> Resolving fs/readdir.c with duplicate-label protection..."
     
     awk '
-    BEGIN { in_old = 0; }
-    
-    # Track if we are inside an old_readdir legacy function
-    /old_readdir/ { in_old = 1; }
-    /^}/ { in_old = 0; }
-    
+    # If we see the label already exists from the native patch, set a flag
+    /^[[:space:]]*zm_out:/ { has_zm_out = 1; }
+    /^[[:space:]]*skip_real_iterate:/ { has_skip = 1; }
+
     /^[[:space:]]*f = fdget_pos\(fd\);/ {
-        if (!in_old) {
-            print "#ifdef CONFIG_ZEROMOUNT"
+        # Only inject initial_count if we are not in an old_readdir function
+        if (in_old != 1) {
+            print "#ifndef CONFIG_ZEROMOUNT_INJECTED"
             print "    int initial_count = count;"
             print "#endif"
         }
-        print $0
-        next
+        print $0; next
     }
-    
-    /^[[:space:]]*return -EBADF;/ {
-        print $0
-        if (!in_old) {
-            print "#ifdef CONFIG_ZEROMOUNT"
-            print "    if (f.file->f_pos >= ZEROMOUNT_MAGIC_POS) {"
-            print "        error = 0;"
-            print "        goto skip_real_iterate;"
-            print "    }"
-            print "#endif"
-        }
-        next
-    }
-    
+
     /^[[:space:]]*if \(buf\.prev_reclen\)/ {
-        if (!in_old) {
+        if (in_old != 1) {
             buf_line = $0
             getline next_line
             is_64 = index(next_line, "dirent64")
             
             print "#ifdef CONFIG_ZEROMOUNT"
-            print "skip_real_iterate:"
-            print "    if (error >= 0 && !signal_pending(current)) {"
-            if (is_64) {
-                print "        zeromount_inject_dents64(f.file, (void __user **)&dirent, &count, &f.file->f_pos);"
-            } else {
-                print "        zeromount_inject_dents(f.file, (void __user **)&dirent, &count, &f.file->f_pos);"
+            # Only inject skip_real_iterate if the native patch missed it
+            if (!has_skip) {
+                print "skip_real_iterate:"
+                print "    if (error >= 0 && !signal_pending(current)) {"
+                if (is_64) {
+                    print "        zeromount_inject_dents64(f.file, (void __user **)&dirent, &count, &f.file->f_pos);"
+                } else {
+                    print "        zeromount_inject_dents(f.file, (void __user **)&dirent, &count, &f.file->f_pos);"
+                }
+                print "        if (count != initial_count)"
+                print "            error = initial_count - count;"
+                print "        goto zm_out;"
+                print "    }"
             }
-            print "        if (count != initial_count)"
-            print "            error = initial_count - count;"
-            print "        goto zm_out;"
-            print "    }"
             print "#endif"
             print buf_line
             print next_line
             next
         }
     }
-    
+
     /^[[:space:]]*fdput_pos\(f\);/ {
-        if (!in_old) {
+        # Only inject zm_out if the native patch missed it
+        if (!has_zm_out && in_old != 1) {
             print "#ifdef CONFIG_ZEROMOUNT"
             print "zm_out:"
             print "#endif"
         }
-        print $0
-        next
+        print $0; next
     }
-    
     { print $0 }
     ' fs/readdir.c > fs/readdir.c.tmp && mv fs/readdir.c.tmp fs/readdir.c
     
