@@ -224,6 +224,9 @@ jobs:
           ./scripts/configure_kconfigs.sh
 
       - name: Run Custom Patches
+        env:
+          TARGET_VERSION: ${{ inputs.target_version }}
+          SU_VARIANT: ${{ inputs.root_manager }}
         run: |
           # Check if file exists and has executable content.
           if [ -s "scripts/custom_patches.sh" ] && [ $(grep -v '^#' scripts/custom_patches.sh | grep -c "[^[:space:]]") -gt 0 ]; then
@@ -234,6 +237,7 @@ jobs:
             echo ">>> No custom patches to apply. Proceeding with stock/KSU build."
           fi
         shell: bash
+
           
       - name: Build common kernel Image
         env:
