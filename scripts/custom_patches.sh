@@ -165,32 +165,40 @@ fi
 if [ -f "fs/readdir.c.rej" ]; then
     echo ">>> Found readdir.c.rej. Applying manual fix..."
     
-    if ! grep -q "int initial_count = count;" fs/readdir.c; then
-        sed -i '/f = fdget_pos(fd);/i\
-#ifdef CONFIG_ZEROMOUNT\
-    int initial_count = count;\
-#endif\
-' fs/readdir.c
-    fi
-
-    if ! grep -q "goto skip_real_iterate;" fs/readdir.c; then
-        sed -i '/return -EBADF;/a\
-#ifdef CONFIG_ZEROMOUNT\
-    if (f.file->f_pos >= ZEROMOUNT_MAGIC_POS) {\
-        error = 0;\
-        goto skip_real_iterate;\
-    }\
-#endif\
-' fs/readdir.c
-    fi
-
-    if ! grep -q "skip_real_iterate:" fs/readdir.c; then
-        # Dynamic look-ahead parsing: Adapts to any number of getdents functions
-        awk '
-        /^[[:space:]]*if \(buf\.prev_reclen\)/ {
+    awk '
+    BEGIN { in_old = 0; }
+    
+    # Track if we are inside an old_readdir legacy function
+    /old_readdir/ { in_old = 1; }
+    /^}/ { in_old = 0; }
+    
+    /^[[:space:]]*f = fdget_pos\(fd\);/ {
+        if (!in_old) {
+            print "#ifdef CONFIG_ZEROMOUNT"
+            print "    int initial_count = count;"
+            print "#endif"
+        }
+        print $0
+        next
+    }
+    
+    /^[[:space:]]*return -EBADF;/ {
+        print $0
+        if (!in_old) {
+            print "#ifdef CONFIG_ZEROMOUNT"
+            print "    if (f.file->f_pos >= ZEROMOUNT_MAGIC_POS) {"
+            print "        error = 0;"
+            print "        goto skip_real_iterate;"
+            print "    }"
+            print "#endif"
+        }
+        next
+    }
+    
+    /^[[:space:]]*if \(buf\.prev_reclen\)/ {
+        if (!in_old) {
             buf_line = $0
             getline next_line
-            
             is_64 = index(next_line, "dirent64")
             
             print "#ifdef CONFIG_ZEROMOUNT"
@@ -210,17 +218,20 @@ if [ -f "fs/readdir.c.rej" ]; then
             print next_line
             next
         }
-        {print}
-        ' fs/readdir.c > fs/readdir.c.tmp && mv fs/readdir.c.tmp fs/readdir.c
-    fi
-
-    if ! grep -q "zm_out:" fs/readdir.c; then
-        sed -i '/^[[:space:]]*fdput_pos(f);/i\
-#ifdef CONFIG_ZEROMOUNT\
-zm_out:\
-#endif\
-' fs/readdir.c
-    fi
+    }
+    
+    /^[[:space:]]*fdput_pos\(f\);/ {
+        if (!in_old) {
+            print "#ifdef CONFIG_ZEROMOUNT"
+            print "zm_out:"
+            print "#endif"
+        }
+        print $0
+        next
+    }
+    
+    { print $0 }
+    ' fs/readdir.c > fs/readdir.c.tmp && mv fs/readdir.c.tmp fs/readdir.c
     
     rm -f fs/readdir.c.rej
 fi
