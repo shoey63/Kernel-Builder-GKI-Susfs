@@ -270,13 +270,13 @@ jobs:
           [ -n "$BOOT_IMG" ] || { echo "[-] Could not find stock boot image"; exit 1; }
 
           STOCK_NAME="$(basename "$BOOT_IMG" .img)"
-          cp -f "$BOOT_IMG" "out/final/${STOCK_NAME}-stock.img"
+          
           bash ./scripts/boot_swap.sh \
             --boot "$BOOT_IMG" \
             --image "out/Image" \
             --magiskboot "./tools/magiskboot" \
             --outdir "out/final" \
-            --outname "${{ env.MANIFEST_BRANCH }}.img" \
+            --outname "${STOCK_NAME}-repacked.img" \
             --workdir "work/repack-tmp"
             
       - name: Prepare Final Artifacts
@@ -287,14 +287,14 @@ jobs:
           # Sanitize inputs.build_name: replace spaces and slashes with underscores
           SAFE_BUILD_NAME=$(echo "${{ inputs.build_name }}" | tr ' /' '__')
           
+          AK3_REPO="https://github.com/shoey63/AnyKernel3.git" 
+          AK3_BRANCH="master"
+          
           if [ "$REPACK_ENABLED" != "true" ]; then
             echo ">>> No OTA provided. Falling back to AnyKernel3 Zip generation..."
             
             # Use the sanitized name and append -AK3
             echo "ARTIFACT_NAME=${SAFE_BUILD_NAME}-AK3" >> $GITHUB_ENV
-            
-            AK3_REPO="https://github.com/shoey63/AnyKernel3.git" 
-            AK3_BRANCH="master"
             
             git clone --depth=1 -b "$AK3_BRANCH" "$AK3_REPO" AnyKernel3-Builder
             rm -rf AnyKernel3-Builder/.git AnyKernel3-Builder/README.md AnyKernel3-Builder/*placeholder
@@ -302,10 +302,19 @@ jobs:
             cp -r AnyKernel3-Builder/* out/final/
             
           else
-            echo ">>> OTA Repack detected. Outputting standard boot image."
-            
-            # Use the sanitized name for standard boot image repacks
+            echo ">>> OTA Repack detected. Outputting standard boot image and AK3 zip."
+            # Use the sanitized name for the parent artifact zip
             echo "ARTIFACT_NAME=${SAFE_BUILD_NAME}" >> $GITHUB_ENV
+            
+            # Generate the specific AK3 zip for inclusion in the artifact
+            git clone --depth=1 -b "$AK3_BRANCH" "$AK3_REPO" AnyKernel3-Builder
+            rm -rf AnyKernel3-Builder/.git AnyKernel3-Builder/README.md AnyKernel3-Builder/*placeholder
+            cp -f out/Image AnyKernel3-Builder/
+            
+            # Zip the AK3 payload explicitly into out/final/
+            cd AnyKernel3-Builder
+            zip -r9 "../out/final/${MANIFEST_BRANCH}-AK3.zip" *
+            cd ..
           fi
           
           echo ">>> Final Artifact Directory:"
@@ -368,7 +377,7 @@ jobs:
           rm manager.zip
           
           echo ">>> Manager successfully staged for final upload!"
-          
+
       - name: Upload final artifact (Kernel)
         uses: actions/upload-artifact@v4
         with:
