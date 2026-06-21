@@ -16,11 +16,6 @@ if ! grep -q "config ZEROMOUNT" fs/Kconfig; then
     echo -e '\nconfig ZEROMOUNT\n\tbool "ZeroMount Path Redirection Subsystem"\n\tdefault y' >> fs/Kconfig
 fi
 
-echo ">>> Resolving gki_defconfig..."
-if ! grep -q "CONFIG_ZEROMOUNT=y" arch/arm64/configs/gki_defconfig; then
-    echo "CONFIG_ZEROMOUNT=y" >> arch/arm64/configs/gki_defconfig
-fi
-
 echo ">>> Resolving fs/proc/task_mmu.c (Hunks 1 & 2)..."
 if ! grep -q "linux/zeromount.h" fs/proc/task_mmu.c; then
     sed -i '/#include <trace\/hooks\/mm.h>/a #ifdef CONFIG_ZEROMOUNT\n#include <linux\/zeromount.h>\n#endif' fs/proc/task_mmu.c
