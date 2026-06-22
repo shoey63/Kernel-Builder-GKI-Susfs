@@ -5,13 +5,13 @@ on:
   workflow_dispatch:
     inputs:
       build_name:
-        description: "Device & Build ID (e.g., komodo-cp1a)"
+        description: "Build Name"
         required: true
         default: ""
         type: string
 
       root_manager:
-        description: "Select Root Environment (Pre-patched with SuSFS)"
+        description: "Select Root Environment"
         required: false
         default: ""
         type: choice
@@ -22,13 +22,25 @@ on:
           - ReSukiSU
           
       enable_ksu_susfs:
-        description: "Integrate KernelSU and SUSFS? (Uncheck to build a stock GKI kernel)"
+        description: "Integrate KernelSU and SUSFS?"
         required: false
         type: boolean
         default: true
-        
+     
+      enable_zero_mount:
+        description: "Integrate ZeroMount stealth hooks?"
+        required: false
+        type: boolean
+        default: true
+
+      build_wg:
+        description: "Build with Wireguard?"
+        required: false
+        type: boolean
+        default: false
+
       target_version:
-        description: "Kernel Version (e.g., 6.1.145)"
+        description: "Kernel Version"
         required: true
         type: string
         
@@ -37,12 +49,6 @@ on:
         required: false
         default: ""
         type: string
-        
-      build_wg:
-        description: "Build with custom Kconfig integration? (auto includes Wireguard)"
-        required: false
-        type: boolean
-        default: false
             
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -226,7 +232,23 @@ jobs:
         run: |
           chmod +x scripts/configure_kconfigs.sh
           ./scripts/configure_kconfigs.sh
-
+          
+      - name: Integrate ZeroMount
+        if: inputs.enable_zero_mount == true
+        env:
+          TARGET_VERSION: ${{ inputs.target_version }}
+          SU_VARIANT: ${{ inputs.root_manager }}
+        run: |
+          # Check if file exists and has executable content.
+          if [ -s "scripts/inject_zero_mount.sh" ] && [ $(grep -v '^#' scripts/inject_zero_mount.sh | grep -c "[^[:space:]]") -gt 0 ]; then
+            echo ">>> ZeroMount script detected. Applying stealth modifications..."
+            chmod +x scripts/inject_zero_mount.sh
+            ./scripts/inject_zero_mount.sh
+          else
+            echo ">>> ZeroMount script missing or empty. Proceeding without it."
+          fi
+        shell: bash
+          
       - name: Run Custom Patches
         env:
           TARGET_VERSION: ${{ inputs.target_version }}
@@ -241,7 +263,7 @@ jobs:
             echo ">>> No custom patches to apply. Proceeding with stock/KSU build."
           fi
         shell: bash
-        
+
       - name: Build common kernel Image
         env:
           WITH_WG: ${{ inputs.build_wg }}
