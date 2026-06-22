@@ -4,31 +4,41 @@ set -euo pipefail
 echo "=== Applying Custom Kernel Patches ==="
 cd kernel_workspace/common
 
-echo ">>> Parsing Target Version from YAML Inputs..."
-# Fallback to 6.1 if the YAML didn't pass anything
+echo ">>> Parsing Target Version and Branch..."
 TARGET_RAW=${TARGET_VERSION:-"6.1"}
 SU_VARIANT=${SU_VARIANT:-"KernelSU-Next"}
 
-# Extract the base version (turns 6.6.118 into 6.6)
-BASE_VER=$(echo "$TARGET_RAW" | cut -d. -f1,2)
-
-# Dynamically map the base version to the Super-Builders branch
-if [ "$BASE_VER" == "6.12" ]; then
-    GKI_BRANCH="android16-6.12"
-elif [ "$BASE_VER" == "6.6" ]; then
-    GKI_BRANCH="android15-6.6"
-elif [ "$BASE_VER" == "5.15" ]; then
-    GKI_BRANCH="android14-5.15"
-elif [ "$BASE_VER" == "5.10" ]; then
-    GKI_BRANCH="android13-5.10"
-else
-    GKI_BRANCH="android14-6.1"
+# 1. Dynamically extract the exact branch from the CI Manifest variable!
+if [ -n "${MANIFEST_BRANCH:-}" ]; then
+    # Extracts "android14-5.15" from "common-android14-5.15-lts"
+    GKI_BRANCH=$(echo "$MANIFEST_BRANCH" | grep -oE 'android[0-9]+-[0-9]+\.[0-9]+' | head -n 1)
+    echo ">>> Successfully extracted branch from CI Manifest: $GKI_BRANCH"
 fi
 
-echo ">>> Target Environment Detected: $GKI_BRANCH (from input $TARGET_RAW) with $SU_VARIANT"
+# 2. Fallback routing ONLY if MANIFEST_BRANCH is missing (local testing)
+if [ -z "${GKI_BRANCH:-}" ]; then
+    BASE_VER=$(echo "$TARGET_RAW" | cut -d. -f1,2)
+    echo "[-] MANIFEST_BRANCH not found. Guessing branch from base version $BASE_VER..."
+    
+    if [ "$BASE_VER" == "6.12" ]; then GKI_BRANCH="android16-6.12"
+    elif [ "$BASE_VER" == "6.6" ]; then GKI_BRANCH="android15-6.6"
+    elif [ "$BASE_VER" == "5.15" ]; then GKI_BRANCH="android14-5.15" # Default to newest 5.15
+    elif [ "$BASE_VER" == "5.10" ]; then GKI_BRANCH="android13-5.10"
+    else GKI_BRANCH="android14-6.1"; fi
+fi
 
-# Construct the exact URL pointing to YOUR fork
-PATCH_URL="https://raw.githubusercontent.com/shoey63/Super-Builders/main/${GKI_BRANCH}/${SU_VARIANT}/patches/60_zeromount-${GKI_BRANCH}.patch"
+# --- THE VANILLA KSU OVERRIDE TRAP ---
+FETCH_VARIANT="$SU_VARIANT"
+if [ "$SU_VARIANT" == "KernelSU" ]; then
+    echo "[!] Vanilla KernelSU detected. Routing patch fetcher to KernelSU-Next for stealth helpers..."
+    FETCH_VARIANT="KernelSU-Next"
+fi
+# -------------------------------------
+
+echo ">>> Target Environment Detected: $GKI_BRANCH with $SU_VARIANT"
+
+# Construct the URL
+PATCH_URL="https://raw.githubusercontent.com/shoey63/Super-Builders/main/${GKI_BRANCH}/${FETCH_VARIANT}/patches/60_zeromount-${GKI_BRANCH}.patch"
 
 echo ">>> Fetching native ZeroMount patch directly from your Super-Builders fork..."
 echo "    -> $PATCH_URL"
@@ -211,17 +221,23 @@ if [ -f "fs/xattr.c.rej" ]; then
     rm -f fs/xattr.c.rej
 fi
 
-# 7. readdir.c - Smarter injection with duplicate detection
+# 7. readdir.c - Smarter injection with duplicate detection and missing goto handling
 if [ -f "fs/readdir.c.rej" ]; then
     echo ">>> Resolving fs/readdir.c with duplicate-label protection..."
     
     awk '
-    # If we see the label already exists from the native patch, set a flag
+    # Detect which function we are in to ignore ancient sys_old_readdir
+    /^[[:space:]]*int old_readdir\(/ { in_old = 1 }
+    /^[[:space:]]*SYSCALL_DEFINE[0-9]\(getdents/ { in_old = 0 }
+    /^[[:space:]]*COMPAT_SYSCALL_DEFINE[0-9]\(getdents/ { in_old = 0 }
+
+    # Track label existence
     /^[[:space:]]*zm_out:/ { has_zm_out = 1; }
     /^[[:space:]]*skip_real_iterate:/ { has_skip = 1; }
 
+    # Setup the anchor for the goto injection
     /^[[:space:]]*f = fdget_pos\(fd\);/ {
-        # Only inject initial_count if we are not in an old_readdir function
+        seen_fdget = 1
         if (in_old != 1) {
             print "#ifndef CONFIG_ZEROMOUNT_INJECTED"
             print "    int initial_count = count;"
@@ -230,6 +246,25 @@ if [ -f "fs/readdir.c.rej" ]; then
         print $0; next
     }
 
+    # Inject the missing goto right after the file check
+    /^[[:space:]]*return -EBADF;/ {
+        print $0
+        if (seen_fdget == 1 && in_old != 1) {
+            # Peek at the next line to prevent double-injection
+            getline next_line
+            if (next_line !~ /zeromount_should_skip/ && next_line !~ /CONFIG_ZEROMOUNT/) {
+                print "#ifdef CONFIG_ZEROMOUNT"
+                print "    if (zeromount_should_skip())"
+                print "        goto skip_real_iterate;"
+                print "#endif"
+            }
+            print next_line
+            seen_fdget = 0
+        }
+        next
+    }
+
+    # Inject the bottom stealth logic block
     /^[[:space:]]*if \(buf\.prev_reclen\)/ {
         if (in_old != 1) {
             buf_line = $0
@@ -237,7 +272,6 @@ if [ -f "fs/readdir.c.rej" ]; then
             is_64 = index(next_line, "dirent64")
             
             print "#ifdef CONFIG_ZEROMOUNT"
-            # Only inject skip_real_iterate if the native patch missed it
             if (!has_skip) {
                 print "skip_real_iterate:"
                 print "    if (error >= 0 && !signal_pending(current)) {"
@@ -258,8 +292,8 @@ if [ -f "fs/readdir.c.rej" ]; then
         }
     }
 
+    # Inject the final exit label
     /^[[:space:]]*fdput_pos\(f\);/ {
-        # Only inject zm_out if the native patch missed it
         if (!has_zm_out && in_old != 1) {
             print "#ifdef CONFIG_ZEROMOUNT"
             print "zm_out:"
