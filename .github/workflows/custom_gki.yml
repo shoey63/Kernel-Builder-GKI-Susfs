@@ -101,7 +101,7 @@ jobs:
           path: external_db
           sparse-checkout: |
             data     
-
+            
       - name: Resolve Manifest Branch from Database
         id: resolve_manifest
         run: |
@@ -121,9 +121,26 @@ jobs:
           # Extract the base version (e.g., turns 6.1.145 into 6.1)
           BASE_VER=$(echo "$TARGET" | cut -d. -f1,2)
           
-          JSON_FILE=$(find external_db/data -name "${BASE_VER}.json" | head -n 1)
+          # --- DYNAMIC JSON SCRAPER ---
+          # Find which JSON file actually contains our exact target version
+          if grep -q "\"$TARGET\"" "external_db/data/android14/$BASE_VER.json" 2>/dev/null; then
+              JSON_FILE="external_db/data/android14/$BASE_VER.json"
+              echo ">>> Target found in Android 14 database."
+          elif grep -q "\"$TARGET\"" "external_db/data/android13/$BASE_VER.json" 2>/dev/null; then
+              JSON_FILE="external_db/data/android13/$BASE_VER.json"
+              echo ">>> Target found in Android 13 database."
+          else
+              echo "[-] Warning: Version $TARGET not found in any specific array."
+              # Fallback logic for invalid inputs or empty 'lts' triggers
+              if [ "$BASE_VER" == "5.15" ]; then
+                  JSON_FILE="external_db/data/android14/5.15.json"
+              else
+                  JSON_FILE=$(find external_db/data -name "${BASE_VER}.json" | head -n 1)
+              fi
+              echo ">>> Defaulting to base LTS branch JSON: $JSON_FILE"
+          fi
           
-          if [ -z "$JSON_FILE" ]; then
+          if [ -z "$JSON_FILE" ] || [ ! -f "$JSON_FILE" ]; then
               echo "[-] Error: No database file found for base version $BASE_VER."
               exit 1
           fi
@@ -143,7 +160,6 @@ jobs:
           if [ -n "$EXACT_MATCH" ]; then
               MANIFEST_BRANCH="common-${ANDROID_VER}-${KERNEL_VER}-${EXACT_MATCH}"
           else
-              echo "[-] Warning: Version $TARGET not found in array."
               echo ">>> Defaulting to the LTS branch (Targeting stable $LTS_VER)..."
               MANIFEST_BRANCH="common-${ANDROID_VER}-${KERNEL_VER}-lts"
           fi
@@ -152,7 +168,7 @@ jobs:
           
           echo "MANIFEST_BRANCH=${MANIFEST_BRANCH}" >> $GITHUB_ENV
           echo "MANIFEST_URL=https://android.googlesource.com/kernel/manifest" >> $GITHUB_ENV
-                    
+
       - name: Setup repo tool
         run: |
           mkdir -p "$HOME/bin"
@@ -195,6 +211,13 @@ jobs:
               # sed extracts 'androidXX-Y.Z', drops everything else, and formats the new string
               SUSFS_BRANCH=$(echo "$MANIFEST" | sed -E 's/common-(android[0-9]+-[0-9]+\.[0-9]+).*/gki-\1-dev/')
               
+              # --- THE ANDROID 14 5.15 SUSFS TRAPDOOR ---
+              if [ "$SUSFS_BRANCH" == "gki-android14-5.15-dev" ]; then
+                  echo "[!] Missing SuSFS branch detected. Routing android14-5.15 to android13-5.15..."
+                  SUSFS_BRANCH="gki-android13-5.15-dev"
+              fi
+              # ------------------------------------------
+              
               # Export to GITHUB_ENV so all future steps/scripts can read it
               echo "SUSFS_BRANCH=${SUSFS_BRANCH}" >> $GITHUB_ENV
               echo ">>> Target SuSFS Branch set to: ${SUSFS_BRANCH}"
@@ -202,7 +225,7 @@ jobs:
               echo "[-] Warning: MANIFEST_BRANCH not found. Falling back to default."
               echo "SUSFS_BRANCH=gki-android14-6.1-dev" >> $GITHUB_ENV
           fi
-          
+
       - name: Integrate SUSFS common-side
         if: inputs.enable_ksu_susfs == true
         env:
