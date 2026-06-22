@@ -28,7 +28,7 @@ fi
 # --- KSU OVERRIDE ---
 FETCH_VARIANT="$SU_VARIANT"
 if [ "$SU_VARIANT" == "KernelSU" ]; then
-    echo "[!] Vanilla KernelSU detected. Routing patch fetcher to KernelSU-Next for stealth helpers..."
+    echo "[!] KernelSU detected. Routing patch fetcher to KernelSU-Next..."
     FETCH_VARIANT="KernelSU-Next"
 fi
 
