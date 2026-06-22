@@ -66,9 +66,22 @@ if [ -f "fs/d_path.c.rej" ]; then
 fi
 
 # 3. proc/base.c
-if [ -f "fs/proc/base.c.rej" ]; then
-    echo ">>> Found base.c.rej. Applying manual fix..."
+if [ -f "fs/proc/base.c.rej" ] || grep -q "zeromount_should_skip" fs/proc/base.c; then
+    echo ">>> Managing fs/proc/base.c fixes and headers..."
+    
+    # 1. Ensure the header definition is present so the compiler recognizes the functions
+    if ! grep -q "linux/zeromount.h" fs/proc/base.c; then
+        echo ">>> Injecting missing linux/zeromount.h header into base.c..."
+        sed -i '/#include "internal.h"/a\
+#ifdef CONFIG_ZEROMOUNT\
+#include <linux/zeromount.h>\
+#endif\
+' fs/proc/base.c
+    fi
+
+    # 2. Apply your existing code injection if it hasn't been added yet
     if ! grep -q "zeromount_get_static_vpath" fs/proc/base.c; then
+        echo ">>> Applying manual base.c code layout fix..."
         sed -i '/pathname = d_path(path, tmp, PATH_MAX);/i\
 #ifdef CONFIG_ZEROMOUNT\
     if (!zeromount_should_skip() && path->dentry) {\
@@ -91,6 +104,7 @@ if [ -f "fs/proc/base.c.rej" ]; then
 #endif\
 ' fs/proc/base.c
     fi
+    
     rm -f fs/proc/base.c.rej
 fi
 
