@@ -107,22 +107,14 @@ jobs:
         run: |
           TARGET_RAW="${{ github.event.inputs.target_version }}"
           echo ">>> Raw input received: $TARGET_RAW"
-          
-          # Regex to extract only the first instance of an X.Y.Z version format
-          TARGET=$(echo "$TARGET_RAW" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n 1)
-          
+          TARGET=$(echo "$TARGET_RAW" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n 1)   
           if [ -z "$TARGET" ]; then
               echo "[-] Error: Could not extract a valid kernel version (e.g., 6.1.145) from the input."
               exit 1
           fi
           
           echo ">>> Clean Target Version extracted: $TARGET"
-          
-          # Extract the base version (e.g., turns 6.1.145 into 6.1)
           BASE_VER=$(echo "$TARGET" | cut -d. -f1,2)
-          
-          # --- DYNAMIC JSON SCRAPER ---
-          # Find which JSON file actually contains our exact target version
           if grep -q "\"$TARGET\"" "external_db/data/android14/$BASE_VER.json" 2>/dev/null; then
               JSON_FILE="external_db/data/android14/$BASE_VER.json"
               echo ">>> Target found in Android 14 database."
@@ -146,13 +138,9 @@ jobs:
           fi
           
           echo ">>> Querying $JSON_FILE for branch match..."
-          
-          # Look for an exact date match for the requested kernel version
           EXACT_MATCH=$(jq -r --arg TARGET "$TARGET" '
             .entries | map(select(.kernel == $TARGET)) | last | .date // empty
           ' "$JSON_FILE")
-          
-          # Extract root metadata for branch construction and logging
           ANDROID_VER=$(jq -r '.android_version' "$JSON_FILE")
           KERNEL_VER=$(jq -r '.kernel_version' "$JSON_FILE")
           LTS_VER=$(jq -r '.lts' "$JSON_FILE")
@@ -164,8 +152,7 @@ jobs:
               MANIFEST_BRANCH="common-${ANDROID_VER}-${KERNEL_VER}-lts"
           fi
           
-          echo ">>> Target Branch successfully resolved: $MANIFEST_BRANCH"
-          
+          echo ">>> Target Branch successfully resolved: $MANIFEST_BRANCH"     
           echo "MANIFEST_BRANCH=${MANIFEST_BRANCH}" >> $GITHUB_ENV
           echo "MANIFEST_URL=https://android.googlesource.com/kernel/manifest" >> $GITHUB_ENV
 
@@ -202,30 +189,24 @@ jobs:
       - name: Calculate Dynamic SuSFS Branch
         if: inputs.enable_ksu_susfs == true
         run: |
-          # Obtains the manifest branch from your workflow inputs/env
           MANIFEST="${{ env.MANIFEST_BRANCH }}" 
           
           if [[ -n "$MANIFEST" ]]; then
               echo ">>> Calculating SuSFS branch from manifest branch: $MANIFEST..."
-              
-              # sed extracts 'androidXX-Y.Z', drops everything else, and formats the new string
               SUSFS_BRANCH=$(echo "$MANIFEST" | sed -E 's/common-(android[0-9]+-[0-9]+\.[0-9]+).*/gki-\1-dev/')
-              
-              # --- THE ANDROID 14 5.15 SUSFS TRAPDOOR ---
               if [ "$SUSFS_BRANCH" == "gki-android14-5.15-dev" ]; then
-                  echo "[!] Missing SuSFS branch detected. Routing android14-5.15 to android13-5.15..."
-                  SUSFS_BRANCH="gki-android13-5.15-dev"
-              fi
-              # ------------------------------------------
+                  echo "[!] Non-dev SuSFS branch detected. Removing '-dev' suffix for android14-5.15..."
+                  SUSFS_BRANCH="gki-android14-5.15"
+              fi 
               
-              # Export to GITHUB_ENV so all future steps/scripts can read it
+              # Export to GITHUB_ENV
               echo "SUSFS_BRANCH=${SUSFS_BRANCH}" >> $GITHUB_ENV
               echo ">>> Target SuSFS Branch set to: ${SUSFS_BRANCH}"
           else
               echo "[-] Warning: MANIFEST_BRANCH not found. Falling back to default."
               echo "SUSFS_BRANCH=gki-android14-6.1-dev" >> $GITHUB_ENV
           fi
-
+          
       - name: Integrate SUSFS common-side
         if: inputs.enable_ksu_susfs == true
         env:
@@ -260,8 +241,7 @@ jobs:
             echo ">>> No custom patches to apply. Proceeding with stock/KSU build."
           fi
         shell: bash
-
-          
+        
       - name: Build common kernel Image
         env:
           WITH_WG: ${{ inputs.build_wg }}
