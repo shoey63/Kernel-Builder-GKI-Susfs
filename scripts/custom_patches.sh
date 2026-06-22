@@ -254,8 +254,10 @@ if [ -f "fs/readdir.c.rej" ]; then
             getline next_line
             if (next_line !~ /zeromount_should_skip/ && next_line !~ /CONFIG_ZEROMOUNT/) {
                 print "#ifdef CONFIG_ZEROMOUNT"
-                print "    if (zeromount_should_skip())"
+                print "    if (zeromount_should_skip()) {"
+                print "        error = 0;"
                 print "        goto skip_real_iterate;"
+                print "    }"
                 print "#endif"
             }
             print next_line
