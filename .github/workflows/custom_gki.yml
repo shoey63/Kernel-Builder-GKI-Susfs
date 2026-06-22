@@ -113,28 +113,39 @@ jobs:
         run: |
           TARGET_RAW="${{ github.event.inputs.target_version }}"
           echo ">>> Raw input received: $TARGET_RAW"
-          TARGET=$(echo "$TARGET_RAW" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n 1)   
+          
+          # Regex to extract only the first instance of an X.Y.Z version format
+          TARGET=$(echo "$TARGET_RAW" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n 1)
+          
           if [ -z "$TARGET" ]; then
               echo "[-] Error: Could not extract a valid kernel version (e.g., 6.1.145) from the input."
               exit 1
           fi
           
           echo ">>> Clean Target Version extracted: $TARGET"
+          
+          # Extract the base version (e.g., turns 6.1.145 into 6.1)
           BASE_VER=$(echo "$TARGET" | cut -d. -f1,2)
-          if grep -q "\"$TARGET\"" "external_db/data/android14/$BASE_VER.json" 2>/dev/null; then
-              JSON_FILE="external_db/data/android14/$BASE_VER.json"
-              echo ">>> Target found in Android 14 database."
-          elif grep -q "\"$TARGET\"" "external_db/data/android13/$BASE_VER.json" 2>/dev/null; then
-              JSON_FILE="external_db/data/android13/$BASE_VER.json"
-              echo ">>> Target found in Android 13 database."
-          else
-              echo "[-] Warning: Version $TARGET not found in any specific array."
-              # Fallback logic for invalid inputs or empty 'lts' triggers
-              if [ "$BASE_VER" == "5.15" ]; then
-                  JSON_FILE="external_db/data/android14/5.15.json"
-              else
-                  JSON_FILE=$(find external_db/data -name "${BASE_VER}.json" | head -n 1)
+          
+          # --- SCALE-PROOF DYNAMIC JSON SCRAPER ---
+          # Find all matching database files for this base version across all Android folders
+          JSON_FILES=$(find external_db/data -name "${BASE_VER}.json")
+          JSON_FILE=""
+          
+          # Loop through found files to find which one actually contains our target version string
+          for file in $JSON_FILES; do
+              if grep -q "\"$TARGET\"" "$file" 2>/dev/null; then
+                  JSON_FILE="$file"
+                  echo ">>> Target found in database: $JSON_FILE"
+                  break
               fi
+          done
+          
+          # Fallback logic if the specific version number isn't found anywhere
+          if [ -z "$JSON_FILE" ]; then
+              echo "[-] Warning: Version $TARGET not found in any specific array."
+              # Default to the highest/newest Android version available for this kernel base
+              JSON_FILE=$(echo "$JSON_FILES" | sort -r | head -n 1)
               echo ">>> Defaulting to base LTS branch JSON: $JSON_FILE"
           fi
           
@@ -144,9 +155,13 @@ jobs:
           fi
           
           echo ">>> Querying $JSON_FILE for branch match..."
+          
+          # Look for an exact date match for the requested kernel version
           EXACT_MATCH=$(jq -r --arg TARGET "$TARGET" '
             .entries | map(select(.kernel == $TARGET)) | last | .date // empty
           ' "$JSON_FILE")
+          
+          # Extract root metadata for branch construction and logging
           ANDROID_VER=$(jq -r '.android_version' "$JSON_FILE")
           KERNEL_VER=$(jq -r '.kernel_version' "$JSON_FILE")
           LTS_VER=$(jq -r '.lts' "$JSON_FILE")
@@ -158,7 +173,8 @@ jobs:
               MANIFEST_BRANCH="common-${ANDROID_VER}-${KERNEL_VER}-lts"
           fi
           
-          echo ">>> Target Branch successfully resolved: $MANIFEST_BRANCH"     
+          echo ">>> Target Branch successfully resolved: $MANIFEST_BRANCH"
+          
           echo "MANIFEST_BRANCH=${MANIFEST_BRANCH}" >> $GITHUB_ENV
           echo "MANIFEST_URL=https://android.googlesource.com/kernel/manifest" >> $GITHUB_ENV
 
