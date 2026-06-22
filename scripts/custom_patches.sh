@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "=== Applying Custom Kernel Patches ==="
+echo "=== Applying Zero Mount Patch ==="
 cd kernel_workspace/common
 
 echo ">>> Parsing Target Version and Branch..."
 TARGET_RAW=${TARGET_VERSION:-"6.1"}
 SU_VARIANT=${SU_VARIANT:-"KernelSU-Next"}
 
-# 1. Dynamically extract the exact branch from the CI Manifest variable!
+# 1. Dynamically extract branch
 if [ -n "${MANIFEST_BRANCH:-}" ]; then
-    # Extracts "android14-5.15" from "common-android14-5.15-lts"
     GKI_BRANCH=$(echo "$MANIFEST_BRANCH" | grep -oE 'android[0-9]+-[0-9]+\.[0-9]+' | head -n 1)
     echo ">>> Successfully extracted branch from CI Manifest: $GKI_BRANCH"
 fi
@@ -18,32 +17,29 @@ fi
 # 2. Fallback routing ONLY if MANIFEST_BRANCH is missing (local testing)
 if [ -z "${GKI_BRANCH:-}" ]; then
     BASE_VER=$(echo "$TARGET_RAW" | cut -d. -f1,2)
-    echo "[-] MANIFEST_BRANCH not found. Guessing branch from base version $BASE_VER..."
-    
+    echo "[-] MANIFEST_BRANCH not found. Assuming branch from base version $BASE_VER..."    
     if [ "$BASE_VER" == "6.12" ]; then GKI_BRANCH="android16-6.12"
     elif [ "$BASE_VER" == "6.6" ]; then GKI_BRANCH="android15-6.6"
-    elif [ "$BASE_VER" == "5.15" ]; then GKI_BRANCH="android14-5.15" # Default to newest 5.15
+    elif [ "$BASE_VER" == "5.15" ]; then GKI_BRANCH="android14-5.15"
     elif [ "$BASE_VER" == "5.10" ]; then GKI_BRANCH="android13-5.10"
     else GKI_BRANCH="android14-6.1"; fi
 fi
 
-# --- THE VANILLA KSU OVERRIDE TRAP ---
+# --- KSU OVERRIDE ---
 FETCH_VARIANT="$SU_VARIANT"
 if [ "$SU_VARIANT" == "KernelSU" ]; then
     echo "[!] Vanilla KernelSU detected. Routing patch fetcher to KernelSU-Next for stealth helpers..."
     FETCH_VARIANT="KernelSU-Next"
 fi
-# -------------------------------------
 
 echo ">>> Target Environment Detected: $GKI_BRANCH with $SU_VARIANT"
 
 # Construct the URL
 PATCH_URL="https://raw.githubusercontent.com/shoey63/Super-Builders/main/${GKI_BRANCH}/${FETCH_VARIANT}/patches/60_zeromount-${GKI_BRANCH}.patch"
 
-echo ">>> Fetching native ZeroMount patch directly from your Super-Builders fork..."
+echo ">>> Fetching native ZeroMount patch"
 echo "    -> $PATCH_URL"
 
-# Download the patch dynamically
 if wget -qO native_zeromount.patch "$PATCH_URL"; then
     echo ">>> Successfully downloaded native patch! Injecting into kernel..."
     patch -p1 < native_zeromount.patch || echo "[-] Minor context mismatches detected. Passing to fixup routine..."
@@ -89,7 +85,7 @@ if [ -f "fs/proc/base.c.rej" ] || grep -q "zeromount_should_skip" fs/proc/base.c
 ' fs/proc/base.c
     fi
 
-    # 2. Apply your existing code injection if it hasn't been added yet
+    # 2. Apply existing code injection if it hasn't been added yet
     if ! grep -q "zeromount_get_static_vpath" fs/proc/base.c; then
         echo ">>> Applying manual base.c code layout fix..."
         sed -i '/pathname = d_path(path, tmp, PATH_MAX);/i\
@@ -221,7 +217,7 @@ if [ -f "fs/xattr.c.rej" ]; then
     rm -f fs/xattr.c.rej
 fi
 
-# 7. readdir.c - Smarter injection with duplicate detection and missing goto handling
+# 7. readdir.c
 if [ -f "fs/readdir.c.rej" ]; then
     echo ">>> Resolving fs/readdir.c with duplicate-label protection..."
     
