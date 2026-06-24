@@ -28,10 +28,10 @@ on:
         default: true
      
       enable_zero_mount:
-        description: "Integrate ZeroMount stealth hooks?"
+        description: "Integrate ZeroMount VFS? (caution - experimental)"
         required: false
         type: boolean
-        default: true
+        default: false
 
       build_wg:
         description: "Build with Wireguard?"
