@@ -28,7 +28,7 @@ on:
         default: true
      
       enable_zero_mount:
-        description: "Integrate ZeroMount VFS? (caution - experimental)"
+        description: "Integrate ZeroMount VFS?"
         required: false
         type: boolean
         default: false
@@ -370,59 +370,28 @@ jobs:
         id: fetch_manager
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VARIANT: ${{ github.event.inputs.root_manager }} 
+          VARIANT: ${{ inputs.root_manager }} 
+          UPSTREAM_HASH: ${{ env.UPSTREAM_HASH }}
         run: |
-          echo ">>> Mapping selected variant to upstream repository..."
-          if [[ "${VARIANT}" == "KernelSU" ]]; then
-              REPO="tiann/KernelSU"
-          elif [[ "${VARIANT}" == "KernelSU-Next" ]]; then
-              REPO="KernelSU-Next/KernelSU-Next"
-          elif [[ "${VARIANT}" == "SukiSU-Ultra" ]]; then
-              REPO="SukiSU-Ultra/SukiSU-Ultra"
-          elif [[ "${VARIANT}" == "ReSukiSU" ]]; then
-              REPO="ReSukiSU/ReSukiSU"
-          else
-              REPO="tiann/KernelSU"
-          fi
-          
-          echo ">>> Searching $REPO for the Release Manager APK built from commit: ${{ env.UPSTREAM_HASH }}..."
-          
-          # Query GitHub API for successful runs matching the EXACT upstream commit
-          RUNS_JSON=$(curl -s -H "Authorization: token $GH_TOKEN" \
-            "https://api.github.com/repos/$REPO/actions/runs?head_sha=${{ env.UPSTREAM_HASH }}&status=success")
-            
-          RUN_IDS=$(echo "$RUNS_JSON" | jq -r '.workflow_runs[].id')
+          chmod +x scripts/fetch_manager.sh
+          ./scripts/fetch_manager.sh "$VARIANT" "$GH_TOKEN" "$UPSTREAM_HASH"
 
-          DOWNLOAD_URL=""
-          
-          for RUN_ID in $RUN_IDS; do
-            ARTIFACTS=$(curl -s -H "Authorization: token $GH_TOKEN" \
-              "https://api.github.com/repos/$REPO/actions/runs/$RUN_ID/artifacts")
-              
-            # Safely targets 'manager' or 'Manager-release' while blocking '-gradle' and '-debug'
-            DOWNLOAD_URL=$(echo "$ARTIFACTS" | jq -r '.artifacts[] | select(.name | test("^(manager|Manager)(-release)?$")) | .archive_download_url' | head -n 1)
-            
-            if [ -n "$DOWNLOAD_URL" ] && [ "$DOWNLOAD_URL" != "null" ]; then
-              echo ">>> Found Release Manager artifact on Run ID: $RUN_ID"
-              break
-            fi
-          done
-          
-          if [ -z "$DOWNLOAD_URL" ] || [ "$DOWNLOAD_URL" == "null" ]; then
-            echo "[-] Failed to locate a Release Manager artifact in recent builds for $REPO."
-            exit 1
-          fi
-          
-          echo ">>> Downloading Manager from $DOWNLOAD_URL..."
-          mkdir -p manager_apk
-          curl -L -H "Authorization: token $GH_TOKEN" -o manager.zip "$DOWNLOAD_URL"
-          
-          echo ">>> Extracting Manager..."
-          unzip -o manager.zip -d manager_apk/
-          rm manager.zip
-          
-          echo ">>> Manager successfully staged for final upload!"
+      - name: Fetch ZeroMount Module
+        if: inputs.enable_zero_mount == true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x scripts/fetch_manager.sh
+          ./scripts/fetch_manager.sh "ZeroMount" "$GH_TOKEN"
 
+      - name: Upload ZeroMount Module
+        if: inputs.enable_zero_mount == true
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZeroMount-Module
+          path: zeromount_module/*.zip
+          if-no-files-found: error
+          
       - name: Upload final artifact (Kernel)
         uses: actions/upload-artifact@v4
         with:
@@ -434,6 +403,6 @@ jobs:
         if: inputs.enable_ksu_susfs == true
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.event.inputs.root_manager }}-Manager
+          name: ${{ inputs.root_manager }}-Manager
           path: manager_apk/*.apk
           if-no-files-found: error
