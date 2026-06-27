@@ -26,6 +26,10 @@ if [[ "${VARIANT}" == "ZeroMount" ]]; then
   FILE_NAME=$(basename "$DOWNLOAD_URL")
   curl -s -L -H "Authorization: token $GH_TOKEN" -o "zeromount_module/$FILE_NAME" "$DOWNLOAD_URL"
   
+  echo ">>> Extracting ZeroMount module to prevent double-zipping..."
+  unzip -q -o "zeromount_module/$FILE_NAME" -d zeromount_module/
+  rm "zeromount_module/$FILE_NAME"
+  
   echo ">>> ZeroMount successfully staged for final upload!"
   exit 0
 fi
