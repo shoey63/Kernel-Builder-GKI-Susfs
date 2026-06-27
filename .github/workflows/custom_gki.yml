@@ -339,7 +339,7 @@ jobs:
             echo ">>> No OTA provided. Falling back to AnyKernel3 Zip generation..."
             
             # Use the sanitized name and append -AK3
-            echo "ARTIFACT_NAME=${MANIFEST_BRANCH}-AK3" >> $GITHUB_ENV
+            echo "ARTIFACT_NAME=${{ inputs.target_version }}-AK3" >> $GITHUB_ENV
             
             git clone --depth=1 -b "$AK3_BRANCH" "$AK3_REPO" AnyKernel3-Builder
             rm -rf AnyKernel3-Builder/.git AnyKernel3-Builder/README.md AnyKernel3-Builder/*placeholder
@@ -358,7 +358,7 @@ jobs:
             
             # Zip the AK3 payload explicitly into out/final/
             cd AnyKernel3-Builder
-            zip -r9 "../out/final/${MANIFEST_BRANCH}-AK3.zip" *
+            zip -r9 "../out/final/${{ inputs.target_version }}-AK3.zip" *
             cd ..
           fi
           
