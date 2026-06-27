@@ -389,9 +389,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ZeroMount-Module
-          path: zeromount_module/*.zip
+          path: zeromount_module/
           if-no-files-found: error
-          
+      
       - name: Upload final artifact (Kernel)
         uses: actions/upload-artifact@v4
         with:
