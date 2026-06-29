@@ -38,8 +38,13 @@ echo ">>> Locating official upstream sync point..."
 # Fetch the official upstream branch to find the divergence point
 git -C "${MANAGER_DIR}" fetch --quiet "https://github.com/${UPSTREAM_REPO}.git" "${UPSTREAM_BRANCH}"
 
-# Dynamically calculate the exact upstream commit before your custom commits began
-UPSTREAM_HASH=$(git -C "${MANAGER_DIR}" merge-base HEAD FETCH_HEAD)
+# 1. Find the raw geometric divergence point
+RAW_BASE=$(git -C "${MANAGER_DIR}" merge-base HEAD FETCH_HEAD)
+
+# 2. Walk backward STRICTLY down the official mainline branch, ignoring bots
+# The --first-parent flag guarantees we only see commits that landed directly on main/dev
+UPSTREAM_HASH=$(git -C "${MANAGER_DIR}" log --first-parent "${RAW_BASE}" --format="%H %an" | grep -iv "dependabot" | head -n 1 | awk '{print $1}')
+
 SHORT_HASH=${UPSTREAM_HASH:0:7}
 
 # Export the exact sync commit to the GitHub Env for the artifact fetcher
