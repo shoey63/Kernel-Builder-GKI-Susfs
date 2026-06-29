@@ -203,7 +203,7 @@ jobs:
         if: inputs.enable_ksu_susfs == true
         env:
           KSU_VARIANT_REPO_URL: https://github.com/shoey63/${{ inputs.root_manager }}.git
-          KSU_VARIANT_REF: ci-runner-canary-test
+          KSU_VARIANT_REF: ci-runner-canary
           KSU_VARIANT_HOOK_MODE: ""
         run: |
           bash ./scripts/inject_ksu_variant.sh "${{ inputs.root_manager }}"
