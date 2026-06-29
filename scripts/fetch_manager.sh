@@ -40,51 +40,66 @@ fi
 echo ">>> Mapping selected variant to upstream repository..."
 if [[ "${VARIANT}" == "KernelSU" ]]; then
     REPO="tiann/KernelSU"
+    DEFAULT_BRANCH="main"
 elif [[ "${VARIANT}" == "KernelSU-Next" ]]; then
     REPO="KernelSU-Next/KernelSU-Next"
+    DEFAULT_BRANCH="dev"
 elif [[ "${VARIANT}" == "SukiSU-Ultra" ]]; then
     REPO="SukiSU-Ultra/SukiSU-Ultra"
+    DEFAULT_BRANCH="main"
 elif [[ "${VARIANT}" == "ReSukiSU" ]]; then
     REPO="ReSukiSU/ReSukiSU"
+    DEFAULT_BRANCH="main"
 else
     REPO="tiann/KernelSU"
+    DEFAULT_BRANCH="main"
 fi
 
-echo ">>> Searching $REPO for the Release Manager APK built from commit: $UPSTREAM_HASH..."
+echo ">>> Searching $REPO for a Release Manager..."
 
+# 1. Try to find the exact commit hash first
 RUNS_JSON=$(curl -s -H "Authorization: token $GH_TOKEN" \
   "https://api.github.com/repos/$REPO/actions/runs?head_sha=${UPSTREAM_HASH}&status=success")
-  
-RUN_IDS=$(echo "$RUNS_JSON" | jq -r '.workflow_runs[].id')
+RUN_ID=$(echo "$RUNS_JSON" | jq -r '.workflow_runs[0].id // empty')
 
-DOWNLOAD_URLS=""
+# 2. Fallback to the latest successful run on the default branch if the hash fails
+if [ -z "$RUN_ID" ]; then
+    echo "[-] Exact hash not found. Falling back to the latest successful run on branch: $DEFAULT_BRANCH..."
+    RUNS_JSON=$(curl -s -H "Authorization: token $GH_TOKEN" \
+      "https://api.github.com/repos/$REPO/actions/runs?branch=${DEFAULT_BRANCH}&status=success&per_page=1")
+    RUN_ID=$(echo "$RUNS_JSON" | jq -r '.workflow_runs[0].id // empty')
+fi
 
-for RUN_ID in $RUN_IDS; do
-  ARTIFACTS=$(curl -s -H "Authorization: token $GH_TOKEN" \
-    "https://api.github.com/repos/$REPO/actions/runs/$RUN_ID/artifacts")
-    
-  # Safely targets standard and spoofed managers while blocking '-gradle' and '-debug'
-  DOWNLOAD_URLS=$(echo "$ARTIFACTS" | jq -r '.artifacts[] | select(.name | test("^(manager|Manager(-release)?|Spoofed-Manager-release|manager-spoofed)$")) | .archive_download_url')
-  
-  if [ -n "$DOWNLOAD_URLS" ] && [ "$DOWNLOAD_URLS" != "null" ]; then
-    echo ">>> Found Release Manager artifact(s) on Run ID: $RUN_ID"
-    break
-  fi
-done
+if [ -z "$RUN_ID" ]; then
+    echo "[-] Critical: Failed to find ANY successful workflow run for $REPO."
+    exit 1
+fi
+
+echo ">>> Fetching artifacts for Run ID: $RUN_ID"
+
+ARTIFACTS_JSON=$(curl -s -H "Authorization: token $GH_TOKEN" \
+  "https://api.github.com/repos/$REPO/actions/runs/$RUN_ID/artifacts")
+
+# 3. Filter for both Regular and Spoofed managers. 
+# Broad case-insensitive match for SukiSU, KernelSU, manager, and spoof.
+DOWNLOAD_URLS=$(echo "$ARTIFACTS_JSON" | jq -r '
+  .artifacts[] 
+  | select(.name | test("(?i)(SukiSU|KernelSU|manager|spoof)")) 
+  | .archive_download_url')
 
 if [ -z "$DOWNLOAD_URLS" ] || [ "$DOWNLOAD_URLS" == "null" ]; then
-  echo "[-] Failed to locate a Release Manager artifact in recent builds for $REPO."
-  exit 1
+    echo "[-] Failed to locate any valid Manager artifacts in Run ID: $RUN_ID"
+    exit 1
 fi
 
 mkdir -p manager_apk
 COUNTER=1
 
 for URL in $DOWNLOAD_URLS; do
-  echo ">>> Downloading Manager from $URL..."
+  echo ">>> Downloading artifact from URL $COUNTER..."
   curl -s -L -H "Authorization: token $GH_TOKEN" -o manager_${COUNTER}.zip "$URL"
   
-  echo ">>> Extracting Manager..."
+  echo ">>> Extracting..."
   unzip -q -o manager_${COUNTER}.zip -d manager_apk/
   rm manager_${COUNTER}.zip
   
@@ -97,3 +112,4 @@ find manager_apk/ -type f \( -name "*x86*.apk" -o -name "*armeabi-v7a*.apk" -o -
 
 echo ">>> Manager(s) successfully staged for final upload!"
 ls -1 manager_apk/
+
