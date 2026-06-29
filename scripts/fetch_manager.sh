@@ -58,41 +58,47 @@ fi
 echo ">>> Searching $REPO for a Release Manager..."
 
 DOWNLOAD_URLS=""
+RUN_ID=""
 
 # 1. Try to find the exact commit hash first
-echo ">>> Checking exact upstream hash: ${UPSTREAM_HASH}"
+echo ">>> Checking exact upstream hash: ${UPSTREAM_HASH} (Filtering by push event on ${DEFAULT_BRANCH})"
 RUNS_JSON=$(curl -s -H "Authorization: token $GH_TOKEN" \
-  "https://api.github.com/repos/$REPO/actions/runs?head_sha=${UPSTREAM_HASH}&status=success")
-RUN_ID=$(echo "$RUNS_JSON" | jq -r '.workflow_runs[0].id // empty')
+  "https://api.github.com/repos/$REPO/actions/runs?head_sha=${UPSTREAM_HASH}&status=success&event=push&branch=${DEFAULT_BRANCH}&per_page=100")
 
-if [ -n "$RUN_ID" ]; then
-    echo ">>> Found Run ID: $RUN_ID. Fetching artifacts..."
-    ARTIFACTS_JSON=$(curl -s -H "Authorization: token $GH_TOKEN" \
-      "https://api.github.com/repos/$REPO/actions/runs/$RUN_ID/artifacts")
-    
-    DOWNLOAD_URLS=$(echo "$ARTIFACTS_JSON" | jq -r '
-      .artifacts[]? 
-      | select(.name | test("(?i)(SukiSU|KernelSU|manager|spoof)")) 
-      | .archive_download_url // empty')
+# Grab ALL run IDs associated with this commit
+RUN_IDS=$(echo "$RUNS_JSON" | jq -r '.workflow_runs[]?.id // empty')
+
+if [ -n "$RUN_IDS" ]; then
+    for ID in $RUN_IDS; do
+        echo ">>> Checking exact-match Run ID: $ID for artifacts..."
+        ARTIFACTS_JSON=$(curl -s -H "Authorization: token $GH_TOKEN" \
+          "https://api.github.com/repos/$REPO/actions/runs/$ID/artifacts")
+        
+        DOWNLOAD_URLS=$(echo "$ARTIFACTS_JSON" | jq -r '
+          .artifacts[]? 
+          | select(.name | test("(?i)(SukiSU|KernelSU|manager|spoof)")) 
+          | .archive_download_url // empty')
+          
+        if [ -n "$DOWNLOAD_URLS" ]; then
+            echo ">>> Valid Manager artifacts located in Run ID: $ID!"
+            RUN_ID=$ID
+            break
+        fi
+    done
 fi
 
-# 2. Fallback if the run didn't exist OR if it had no artifacts
+# 2. Fallback if the run didn't exist OR if none of its workflows had artifacts
 if [ -z "$DOWNLOAD_URLS" ]; then
-    if [ -n "$RUN_ID" ]; then
-        echo "[-] Run ID $RUN_ID exists but has no valid artifacts (likely a dependabot bump)."
-    else
-        echo "[-] No successful run found for exact hash."
-    fi
-    
+    echo "[-] No valid artifacts found for exact hash. (Jobs skipped or expired)."
     echo ">>> Falling back to recent successful runs on branch: $DEFAULT_BRANCH..."
     
-    # Fetch the last 5 successful runs to ensure we bypass any empty dependabot runs on the main branch
+    # Fetch the last 20 successful runs to comfortably cover multiple commits' worth of workflows
     RUNS_JSON=$(curl -s -H "Authorization: token $GH_TOKEN" \
-      "https://api.github.com/repos/$REPO/actions/runs?branch=${DEFAULT_BRANCH}&status=success&per_page=5")
+      "https://api.github.com/repos/$REPO/actions/runs?branch=${DEFAULT_BRANCH}&status=success&per_page=20")
     
-    RUN_IDS=$(echo "$RUNS_JSON" | jq -r '.workflow_runs[].id // empty')
+    FALLBACK_RUN_IDS=$(echo "$RUNS_JSON" | jq -r '.workflow_runs[]?.id // empty')
     
-    for ID in $RUN_IDS; do
+    for ID in $FALLBACK_RUN_IDS; do
         echo ">>> Checking fallback Run ID: $ID..."
         ARTIFACTS_JSON=$(curl -s -H "Authorization: token $GH_TOKEN" \
           "https://api.github.com/repos/$REPO/actions/runs/$ID/artifacts")
@@ -107,7 +113,6 @@ if [ -z "$DOWNLOAD_URLS" ]; then
             RUN_ID=$ID
             break
         fi
-        echo "[-] No valid artifacts in Run $ID. Searching next..."
     done
 fi
 
@@ -120,8 +125,10 @@ fi
 mkdir -p manager_apk
 COUNTER=1
 
+# Change IFS so bash correctly handles URLs with spaces or newlines
+IFS=$'\n'
 for URL in $DOWNLOAD_URLS; do
-  echo ">>> Downloading artifact from URL $COUNTER..."
+  echo ">>> Downloading artifact $COUNTER..."
   curl -s -L -H "Authorization: token $GH_TOKEN" -o manager_${COUNTER}.zip "$URL"
   
   echo ">>> Extracting..."
@@ -130,11 +137,16 @@ for URL in $DOWNLOAD_URLS; do
   
   COUNTER=$((COUNTER+1))
 done
+unset IFS
 
 echo ">>> Cleaning up unnecessary architectures..."
-# GKI devices are strictly arm64. Deletes x86, 32-bit, and universal APKs.
 find manager_apk/ -type f \( -name "*x86*.apk" -o -name "*armeabi-v7a*.apk" -o -name "*universal*.apk" \) -exec rm -f {} +
 
 echo ">>> Manager(s) successfully staged for final upload!"
 ls -1 manager_apk/
+
+
+    
+
+
 
