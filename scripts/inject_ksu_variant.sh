@@ -42,10 +42,14 @@ git -C "${MANAGER_DIR}" fetch --quiet "https://github.com/${UPSTREAM_REPO}.git" 
 RAW_BASE=$(git -C "${MANAGER_DIR}" merge-base HEAD FETCH_HEAD)
 
 # 2. Walk backward STRICTLY down the official mainline branch, ignoring bots
-# The --first-parent flag guarantees we only see commits that landed directly on main/dev
+# We temporarily suspend pipefail because 'head -n 1' intentionally breaks the pipe
+# to stop reading history early, throwing a harmless SIGPIPE error that pipefail would otherwise catch.
+set +o pipefail
 UPSTREAM_HASH=$(git -C "${MANAGER_DIR}" log --first-parent "${RAW_BASE}" --format="%H %an" | grep -iv "dependabot" | head -n 1 | awk '{print $1}')
+set -o pipefail
 
 SHORT_HASH=${UPSTREAM_HASH:0:7}
+
 
 # Export the exact sync commit to the GitHub Env for the artifact fetcher
 echo "UPSTREAM_HASH=${UPSTREAM_HASH}" >> $GITHUB_ENV
