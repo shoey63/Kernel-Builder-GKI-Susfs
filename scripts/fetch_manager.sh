@@ -57,38 +57,63 @@ fi
 
 echo ">>> Searching $REPO for a Release Manager..."
 
+DOWNLOAD_URLS=""
+
 # 1. Try to find the exact commit hash first
+echo ">>> Checking exact upstream hash: ${UPSTREAM_HASH}"
 RUNS_JSON=$(curl -s -H "Authorization: token $GH_TOKEN" \
   "https://api.github.com/repos/$REPO/actions/runs?head_sha=${UPSTREAM_HASH}&status=success")
 RUN_ID=$(echo "$RUNS_JSON" | jq -r '.workflow_runs[0].id // empty')
 
-# 2. Fallback to the latest successful run on the default branch if the hash fails
-if [ -z "$RUN_ID" ]; then
-    echo "[-] Exact hash not found. Falling back to the latest successful run on branch: $DEFAULT_BRANCH..."
+if [ -n "$RUN_ID" ]; then
+    echo ">>> Found Run ID: $RUN_ID. Fetching artifacts..."
+    ARTIFACTS_JSON=$(curl -s -H "Authorization: token $GH_TOKEN" \
+      "https://api.github.com/repos/$REPO/actions/runs/$RUN_ID/artifacts")
+    
+    DOWNLOAD_URLS=$(echo "$ARTIFACTS_JSON" | jq -r '
+      .artifacts[]? 
+      | select(.name | test("(?i)(SukiSU|KernelSU|manager|spoof)")) 
+      | .archive_download_url // empty')
+fi
+
+# 2. Fallback if the run didn't exist OR if it had no artifacts
+if [ -z "$DOWNLOAD_URLS" ]; then
+    if [ -n "$RUN_ID" ]; then
+        echo "[-] Run ID $RUN_ID exists but has no valid artifacts (likely a dependabot bump)."
+    else
+        echo "[-] No successful run found for exact hash."
+    fi
+    
+    echo ">>> Falling back to recent successful runs on branch: $DEFAULT_BRANCH..."
+    
+    # Fetch the last 5 successful runs to ensure we bypass any empty dependabot runs on the main branch
     RUNS_JSON=$(curl -s -H "Authorization: token $GH_TOKEN" \
-      "https://api.github.com/repos/$REPO/actions/runs?branch=${DEFAULT_BRANCH}&status=success&per_page=1")
-    RUN_ID=$(echo "$RUNS_JSON" | jq -r '.workflow_runs[0].id // empty')
+      "https://api.github.com/repos/$REPO/actions/runs?branch=${DEFAULT_BRANCH}&status=success&per_page=5")
+    
+    RUN_IDS=$(echo "$RUNS_JSON" | jq -r '.workflow_runs[].id // empty')
+    
+    for ID in $RUN_IDS; do
+        echo ">>> Checking fallback Run ID: $ID..."
+        ARTIFACTS_JSON=$(curl -s -H "Authorization: token $GH_TOKEN" \
+          "https://api.github.com/repos/$REPO/actions/runs/$ID/artifacts")
+        
+        DOWNLOAD_URLS=$(echo "$ARTIFACTS_JSON" | jq -r '
+          .artifacts[]? 
+          | select(.name | test("(?i)(SukiSU|KernelSU|manager|spoof)")) 
+          | .archive_download_url // empty')
+          
+        if [ -n "$DOWNLOAD_URLS" ]; then
+            echo ">>> Valid artifacts located in fallback Run ID: $ID!"
+            RUN_ID=$ID
+            break
+        fi
+        echo "[-] No valid artifacts in Run $ID. Searching next..."
+    done
 fi
 
-if [ -z "$RUN_ID" ]; then
-    echo "[-] Critical: Failed to find ANY successful workflow run for $REPO."
-    exit 1
-fi
-
-echo ">>> Fetching artifacts for Run ID: $RUN_ID"
-
-ARTIFACTS_JSON=$(curl -s -H "Authorization: token $GH_TOKEN" \
-  "https://api.github.com/repos/$REPO/actions/runs/$RUN_ID/artifacts")
-
-# 3. Filter for both Regular and Spoofed managers. 
-# Broad case-insensitive match for SukiSU, KernelSU, manager, and spoof.
-DOWNLOAD_URLS=$(echo "$ARTIFACTS_JSON" | jq -r '
-  .artifacts[] 
-  | select(.name | test("(?i)(SukiSU|KernelSU|manager|spoof)")) 
-  | .archive_download_url')
-
-if [ -z "$DOWNLOAD_URLS" ] || [ "$DOWNLOAD_URLS" == "null" ]; then
-    echo "[-] Failed to locate any valid Manager artifacts in Run ID: $RUN_ID"
+# Final sanity check before downloading
+if [ -z "$DOWNLOAD_URLS" ]; then
+    echo "[-] Critical: Failed to locate ANY valid Manager artifacts for $REPO."
     exit 1
 fi
 
