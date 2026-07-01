@@ -7,6 +7,7 @@ cd kernel_workspace
 VARIANT=$1
 MANAGER_DIR="KernelSU"
 rm -rf "${MANAGER_DIR}"
+KSU_VARIANT_REF=$(echo "${KSU_VARIANT_REF}" | xargs)
 
 echo "=== Integrating ${VARIANT} ==="
 echo ">>> Cloning custom pipeline branch: ${KSU_VARIANT_REF}..."
