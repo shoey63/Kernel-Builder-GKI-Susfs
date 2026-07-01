@@ -3,19 +3,24 @@ run-name: "Build Custom GKI: ${{ inputs.build_name }} [${{ github.ref_name }}]"
 
 on:
   workflow_dispatch:
-    inputs:
+    inputs:      
+      ksu_branch_ref:
+        description: 'Repo Branch'
+        required: false
+        default: 'ci-runner'
+        type: string       
+      
       build_name:
         description: "Build Name"
         required: true
         default: ""
         type: string
-        
-      ksu_branch_ref:
-        description: 'Fork Branch'
-        required: true
-        default: 'ci-runner'
-        type: string       
 
+      target_version:
+        description: "Kernel Version"
+        required: true
+        type: string        
+        
       root_manager:
         description: "Root Environment"
         required: false
@@ -26,12 +31,7 @@ on:
           - KernelSU
           - SukiSU-Ultra
           - ReSukiSU
-          
-      target_version:
-        description: "Kernel Version"
-        required: true
-        type: string
-        
+                 
       enable_ksu_susfs:
         description: "Integrate KernelSU and SUSFS?"
         required: false
