@@ -9,9 +9,15 @@ on:
         required: true
         default: ""
         type: string
+        
+      ksu_branch_ref:
+        description: 'Fork Branch'
+        required: true
+        default: 'ci-runner'
+        type: string       
 
       root_manager:
-        description: "Select Root Environment"
+        description: "Root Environment"
         required: false
         default: ""
         type: choice
@@ -21,6 +27,11 @@ on:
           - SukiSU-Ultra
           - ReSukiSU
           
+      target_version:
+        description: "Kernel Version"
+        required: true
+        type: string
+        
       enable_ksu_susfs:
         description: "Integrate KernelSU and SUSFS?"
         required: false
@@ -39,10 +50,6 @@ on:
         type: boolean
         default: false
 
-      target_version:
-        description: "Kernel Version"
-        required: true
-        type: string
         
       ota_url:
         description: "Full OTA ZIP URL (blank produces AK3 zip)"
@@ -203,7 +210,7 @@ jobs:
         if: inputs.enable_ksu_susfs == true
         env:
           KSU_VARIANT_REPO_URL: https://github.com/shoey63/${{ inputs.root_manager }}.git
-          KSU_VARIANT_REF: ci-runner-canary-2
+          KSU_VARIANT_REF: ${{ inputs.ksu_branch_ref }} to 
           KSU_VARIANT_HOOK_MODE: ""
         run: |
           bash ./scripts/inject_ksu_variant.sh "${{ inputs.root_manager }}"
