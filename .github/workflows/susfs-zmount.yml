@@ -165,16 +165,17 @@ jobs:
           if [ -z "$JSON_FILE" ] || [ ! -f "$JSON_FILE" ]; then
               echo "[-] Warning: No database file found for base version $BASE_VER."
               echo ">>> Bypassing database and defaulting to standard LTS branch..."
-              
-              # Map standard GKI kernel bases to Android versions
+                            # Map standard GKI kernel bases to their most widely adopted/newest Android release branches
               case "$BASE_VER" in
-                  "5.10") ANDROID_VER="android12" ;;
-                  "5.15") ANDROID_VER="android13" ;;
+                  "5.10") ANDROID_VER="android13" ;; 
+                  "5.15") ANDROID_VER="android14" ;;
                   "6.1")  ANDROID_VER="android14" ;;
                   "6.6")  ANDROID_VER="android15" ;;
-                  "6.12") ANDROID_VER="android15" ;;
-                  *)      ANDROID_VER="android15" ;; # Default newest if unknown
+                  "6.12") ANDROID_VER="android16" ;; 
+                  "6.18") ANDROID_VER="android17" ;; 
+                  *)      ANDROID_VER="android17" ;; # Catch-all for newest bases
               esac
+
               
               MANIFEST_BRANCH="common-${ANDROID_VER}-${BASE_VER}-lts"
           else
