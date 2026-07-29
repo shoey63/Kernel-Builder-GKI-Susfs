@@ -139,48 +139,62 @@ jobs:
           
           # --- SCALE-PROOF DYNAMIC JSON SCRAPER ---
           # Find all matching database files for this base version across all Android folders
-          JSON_FILES=$(find external_db/data -name "${BASE_VER}.json")
+          JSON_FILES=$(find external_db/data -name "${BASE_VER}.json" 2>/dev/null || true)
           JSON_FILE=""
           
           # Loop through found files to find which one actually contains our target version string
-          for file in $JSON_FILES; do
-              if grep -q "\"$TARGET\"" "$file" 2>/dev/null; then
-                  JSON_FILE="$file"
-                  echo ">>> Target found in database: $JSON_FILE"
-                  break
-              fi
-          done
+          if [ -n "$JSON_FILES" ]; then
+              for file in $JSON_FILES; do
+                  if grep -q "\"$TARGET\"" "$file" 2>/dev/null; then
+                      JSON_FILE="$file"
+                      echo ">>> Target found in database: $JSON_FILE"
+                      break
+                  fi
+              done
+          fi
           
           # Fallback logic if the specific version number isn't found anywhere
-          if [ -z "$JSON_FILE" ]; then
+          if [ -z "$JSON_FILE" ] && [ -n "$JSON_FILES" ]; then
               echo "[-] Warning: Version $TARGET not found in any specific array."
               # Default to the highest/newest Android version available for this kernel base
               JSON_FILE=$(echo "$JSON_FILES" | sort -r | head -n 1)
               echo ">>> Defaulting to base LTS branch JSON: $JSON_FILE"
           fi
           
+          # --- REPLACED CRASH LOGIC WITH LTS FALLBACK ---
           if [ -z "$JSON_FILE" ] || [ ! -f "$JSON_FILE" ]; then
-              echo "[-] Error: No database file found for base version $BASE_VER."
-              exit 1
-          fi
-          
-          echo ">>> Querying $JSON_FILE for branch match..."
-          
-          # Look for an exact date match for the requested kernel version
-          EXACT_MATCH=$(jq -r --arg TARGET "$TARGET" '
-            .entries | map(select(.kernel == $TARGET)) | last | .date // empty
-          ' "$JSON_FILE")
-          
-          # Extract root metadata for branch construction and logging
-          ANDROID_VER=$(jq -r '.android_version' "$JSON_FILE")
-          KERNEL_VER=$(jq -r '.kernel_version' "$JSON_FILE")
-          LTS_VER=$(jq -r '.lts' "$JSON_FILE")
-          
-          if [ -n "$EXACT_MATCH" ]; then
-              MANIFEST_BRANCH="common-${ANDROID_VER}-${KERNEL_VER}-${EXACT_MATCH}"
+              echo "[-] Warning: No database file found for base version $BASE_VER."
+              echo ">>> Bypassing database and defaulting to standard LTS branch..."
+              
+              # Map standard GKI kernel bases to Android versions
+              case "$BASE_VER" in
+                  "5.10") ANDROID_VER="android12" ;;
+                  "5.15") ANDROID_VER="android13" ;;
+                  "6.1")  ANDROID_VER="android14" ;;
+                  "6.6")  ANDROID_VER="android15" ;;
+                  "6.12") ANDROID_VER="android15" ;;
+                  *)      ANDROID_VER="android15" ;; # Default newest if unknown
+              esac
+              
+              MANIFEST_BRANCH="common-${ANDROID_VER}-${BASE_VER}-lts"
           else
-              echo ">>> Defaulting to the LTS branch (Targeting stable $LTS_VER)..."
-              MANIFEST_BRANCH="common-${ANDROID_VER}-${KERNEL_VER}-lts"
+              echo ">>> Querying $JSON_FILE for branch match..."
+              
+              # Look for an exact date match for the requested kernel version
+              EXACT_MATCH=$(jq -r --arg TARGET "$TARGET" '
+                .entries | map(select(.kernel == $TARGET)) | last | .date // empty
+              ' "$JSON_FILE")
+              
+              # Extract root metadata for branch construction and logging
+              ANDROID_VER=$(jq -r '.android_version' "$JSON_FILE")
+              KERNEL_VER=$(jq -r '.kernel_version' "$JSON_FILE")
+              
+              if [ -n "$EXACT_MATCH" ]; then
+                  MANIFEST_BRANCH="common-${ANDROID_VER}-${KERNEL_VER}-${EXACT_MATCH}"
+              else
+                  echo ">>> Defaulting to the LTS branch..."
+                  MANIFEST_BRANCH="common-${ANDROID_VER}-${KERNEL_VER}-lts"
+              fi
           fi
           
           echo ">>> Target Branch successfully resolved: $MANIFEST_BRANCH"
