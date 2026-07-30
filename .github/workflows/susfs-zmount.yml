@@ -250,11 +250,10 @@ jobs:
           if [[ -n "$MANIFEST" ]]; then
               echo ">>> Calculating SuSFS branch from manifest branch: $MANIFEST..."
               SUSFS_BRANCH=$(echo "$MANIFEST" | sed -E 's/common-(android[0-9]+-[0-9]+\.[0-9]+).*/gki-\1-dev/')
-              if [ "$SUSFS_BRANCH" == "gki-android14-5.15-dev" ]; then
-                  echo "[!] Non-dev SuSFS branch detected. Removing '-dev' suffix for android14-5.15..."
-                  SUSFS_BRANCH="gki-android14-5.15"
-              fi 
-              
+              echo ">>> Target SuSFS Branch mapped to: $SUSFS_BRANCH"
+              echo "SUSFS_NEXT_REF=${SUSFS_BRANCH}" >> $GITHUB_ENV
+          fi 
+     
               # Export to GITHUB_ENV
               echo "SUSFS_BRANCH=${SUSFS_BRANCH}" >> $GITHUB_ENV
               echo ">>> Target SuSFS Branch set to: ${SUSFS_BRANCH}"
