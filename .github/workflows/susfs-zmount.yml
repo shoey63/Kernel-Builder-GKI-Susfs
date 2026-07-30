@@ -110,14 +110,6 @@ jobs:
           echo "=== Verified Memory Configuration ==="
           free -h
 
-      - name: Fetch Manifest Database
-        uses: actions/checkout@v4
-        with:
-          repository: shoey63/GKI_KernelSU_SUSFS
-          path: external_db
-          sparse-checkout: |
-            data     
-            
       - name: Resolve Manifest Branch from Database
         id: resolve_manifest
         run: |
@@ -136,36 +128,32 @@ jobs:
           
           # Extract the base version (e.g., turns 6.1.145 into 6.1)
           BASE_VER=$(echo "$TARGET" | cut -d. -f1,2)
+          DB_FILE="tools/master_kernel_db.json"
+          MANIFEST_BRANCH=""
           
-          # --- SCALE-PROOF DYNAMIC JSON SCRAPER ---
-          # Find all matching database files for this base version across all Android folders
-          JSON_FILES=$(find external_db/data -name "${BASE_VER}.json" 2>/dev/null || true)
-          JSON_FILE=""
-          
-          # Loop through found files to find which one actually contains our target version string
-          if [ -n "$JSON_FILES" ]; then
-              for file in $JSON_FILES; do
-                  if grep -q "\"$TARGET\"" "$file" 2>/dev/null; then
-                      JSON_FILE="$file"
-                      echo ">>> Target found in database: $JSON_FILE"
-                      break
-                  fi
-              done
+          # --- QUERY UNIFIED JSON DATABASE ---
+          if [ -f "$DB_FILE" ]; then
+              echo ">>> Querying $DB_FILE for branch match..."
+              
+              # Extract the exact matching dictionary block for the kernel version
+              JSON_RESULT=$(jq -r ".[\"$BASE_VER\"][] | select(.kernel == \"$TARGET\")" "$DB_FILE" 2>/dev/null || true)
+              
+              if [ -n "$JSON_RESULT" ]; then
+                  A_VER=$(echo "$JSON_RESULT" | jq -r '.android_version')
+                  K_DATE=$(echo "$JSON_RESULT" | jq -r '.date')
+                  MANIFEST_BRANCH="common-${A_VER}-${BASE_VER}-${K_DATE}"
+                  
+                  echo ">>> Precise match found in DB!"
+              fi
+          else
+              echo "[-] Warning: Database file $DB_FILE not found in the repository."
           fi
           
-          # Fallback logic if the specific version number isn't found anywhere
-          if [ -z "$JSON_FILE" ] && [ -n "$JSON_FILES" ]; then
-              echo "[-] Warning: Version $TARGET not found in any specific array."
-              # Default to the highest/newest Android version available for this kernel base
-              JSON_FILE=$(echo "$JSON_FILES" | sort -r | head -n 1)
-              echo ">>> Defaulting to base LTS branch JSON: $JSON_FILE"
-          fi
-          
-          # --- REPLACED CRASH LOGIC WITH LTS FALLBACK ---
-          if [ -z "$JSON_FILE" ] || [ ! -f "$JSON_FILE" ]; then
-              echo "[-] Warning: No database file found for base version $BASE_VER."
-              echo ">>> Bypassing database and defaulting to standard LTS branch..."
-                            # Map standard GKI kernel bases to their most widely adopted/newest Android release branches
+          # --- LTS FALLBACK & CRASH LOGIC ---
+          if [ -z "$MANIFEST_BRANCH" ]; then
+              echo "[-] Exact version not mapped. Bypassing database and defaulting to standard LTS branch..."
+              
+              # Map standard GKI kernel bases to their logical LTS branches
               case "$BASE_VER" in
                   "5.10") ANDROID_VER="android13" ;; 
                   "5.15") ANDROID_VER="android14" ;;
@@ -173,35 +161,22 @@ jobs:
                   "6.6")  ANDROID_VER="android15" ;;
                   "6.12") ANDROID_VER="android16" ;; 
                   "6.18") ANDROID_VER="android17" ;; 
-                  *)      ANDROID_VER="android17" ;; # Catch-all for newest bases
+                  *)      
+                      # Total nonsense kills the build
+                      echo "[-] Error: Unsupported base version $BASE_VER. Cannot resolve a valid LTS branch."
+                      exit 1 
+                      ;; 
               esac
-
               
               MANIFEST_BRANCH="common-${ANDROID_VER}-${BASE_VER}-lts"
-          else
-              echo ">>> Querying $JSON_FILE for branch match..."
-              
-              # Look for an exact date match for the requested kernel version
-              EXACT_MATCH=$(jq -r --arg TARGET "$TARGET" '
-                .entries | map(select(.kernel == $TARGET)) | last | .date // empty
-              ' "$JSON_FILE")
-              
-              # Extract root metadata for branch construction and logging
-              ANDROID_VER=$(jq -r '.android_version' "$JSON_FILE")
-              KERNEL_VER=$(jq -r '.kernel_version' "$JSON_FILE")
-              
-              if [ -n "$EXACT_MATCH" ]; then
-                  MANIFEST_BRANCH="common-${ANDROID_VER}-${KERNEL_VER}-${EXACT_MATCH}"
-              else
-                  echo ">>> Defaulting to the LTS branch..."
-                  MANIFEST_BRANCH="common-${ANDROID_VER}-${KERNEL_VER}-lts"
-              fi
           fi
           
           echo ">>> Target Branch successfully resolved: $MANIFEST_BRANCH"
           
+          # Export to environment for subsequent sync steps
           echo "MANIFEST_BRANCH=${MANIFEST_BRANCH}" >> $GITHUB_ENV
           echo "MANIFEST_URL=https://android.googlesource.com/kernel/manifest" >> $GITHUB_ENV
+
 
       - name: Configure Build Channels
         if: inputs.enable_ksu_susfs == true
