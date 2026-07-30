@@ -252,7 +252,6 @@ jobs:
               SUSFS_BRANCH=$(echo "$MANIFEST" | sed -E 's/common-(android[0-9]+-[0-9]+\.[0-9]+).*/gki-\1-dev/')
               echo ">>> Target SuSFS Branch mapped to: $SUSFS_BRANCH"
               echo "SUSFS_NEXT_REF=${SUSFS_BRANCH}" >> $GITHUB_ENV
-          fi 
      
               # Export to GITHUB_ENV
               echo "SUSFS_BRANCH=${SUSFS_BRANCH}" >> $GITHUB_ENV
