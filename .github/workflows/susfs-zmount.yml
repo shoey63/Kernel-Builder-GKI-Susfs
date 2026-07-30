@@ -110,6 +110,9 @@ jobs:
           echo "=== Verified Memory Configuration ==="
           free -h
 
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
       - name: Resolve Manifest Branch from Database
         id: resolve_manifest
         run: |
