@@ -44,15 +44,17 @@ if [[ "${USE_DYNAMIC_TRANSPLANT}" == "true" ]]; then
         cd common
         bash "${MANAGER_DIR}/kernel/setup.sh" dev
         cd ..
-
+        
         cd "${MANAGER_DIR}"
 
         # CAPTURE THIS IMMEDIATELY BEFORE ANY CHERRY-PICKS!
-        UPSTREAM_HASH=$(git log -n 1 --format="%H")
+        # Walk backward from HEAD, ignoring commits that ONLY touch website/docs
+        UPSTREAM_HASH=$(git log -n 1 --format="%H" -- . ":!website" ":!docs")
 
         echo ">>> 2. Scraping the latest official release tag..."
         CALCULATED_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
         echo "  -> Target Tag: $CALCULATED_TAG"
+
 
         echo ">>> 3. Fetching Pershoot's live laboratory..."
         git remote add pershoot https://github.com/pershoot/KernelSU-Next.git
@@ -188,15 +190,16 @@ else
     git -C "${MANAGER_DIR}" fetch --quiet "https://github.com/${UPSTREAM_REPO}.git" "${UPSTREAM_BRANCH}"
     RAW_BASE=$(git -C "${MANAGER_DIR}" merge-base HEAD FETCH_HEAD)
 
-    # Walk backward down the official mainline branch and fetch HEAD commit.
+    # Walk backward down the official mainline branch, ignoring commits that ONLY touch website/docs
     set +o pipefail
-    UPSTREAM_HASH=$(git -C "${MANAGER_DIR}" log --first-parent "${RAW_BASE}" --format="%H" -n 1)
+    UPSTREAM_HASH=$(git -C "${MANAGER_DIR}" log --first-parent "${RAW_BASE}" --format="%H" -n 1 -- . ":!website" ":!docs")
     set -o pipefail
     
     # Calculate exact versions for the Sandbox Gatekeeper
     CALCULATED_COUNT=$(git -C "${MANAGER_DIR}" rev-list --count "${UPSTREAM_HASH}" 2>/dev/null || echo "11950")
     CALCULATED_TAG=$(git -C "${MANAGER_DIR}" describe --tags --abbrev=0 "${UPSTREAM_HASH}" 2>/dev/null || echo "v3.2.0")
 fi
+
 
 # ========================================================================
 # KLEAF SANDBOX IMMUTABLE GATEKEEPER
