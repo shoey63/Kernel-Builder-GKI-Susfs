@@ -22,10 +22,10 @@ if [ ! -f "$DB_FILE" ]; then
     echo "[!] Database not found at '$DB_FILE'."
     echo "[*] Triggering full historical build..."
     
-    # Check if the generator script exists
-    if [ -f "scripts/generate_full_db.sh" ]; then
-        # Run it with bash in case it lacks execute permissions (chmod +x)
-        bash scripts/generate_full_db.sh
+    # Check if the python generator script exists
+    if [ -f "scripts/generate_full_db.py" ]; then
+        # Run it explicitly with python3
+        python3 scripts/generate_full_db.py
         
         # Verify the generator actually created the DB file
         if [ ! -f "$DB_FILE" ]; then
@@ -35,7 +35,7 @@ if [ ! -f "$DB_FILE" ]; then
         
         echo "[+] Full database rebuilt successfully!"
     else
-        echo "[-] FATAL: 'scripts/generate_full_db.sh' not found. Cannot rebuild database."
+        echo "[-] FATAL: 'scripts/generate_full_db.py' not found. Cannot rebuild database."
         exit 1
     fi
 else
