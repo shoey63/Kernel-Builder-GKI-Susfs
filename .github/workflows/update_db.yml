@@ -1,7 +1,7 @@
 name: Kernel DB Maintenance
 on:
   schedule:
-    - cron: '0 10 * * *'
+    - cron: '45 10 * * *'
   workflow_dispatch:
 
 jobs:
@@ -22,7 +22,7 @@ jobs:
       - name: Make scripts executable
         run: |
           chmod +x scripts/update_kernel_db.sh
-          chmod +x scripts/generate_full_db.sh
+          chmod +x scripts/generate_full_db.py
 
       - name: Run Database Update
         run: ./scripts/update_kernel_db.sh
