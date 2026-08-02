@@ -4,7 +4,7 @@ import urllib.request
 import os
 import time
 
-DB_FILE = "master_kernel_db.json"
+DB_FILE = "tools/master_kernel_db.json"
 REPO_URL = "https://android.googlesource.com/kernel/common"
 
 def get_gitiles_json(url, retries=3):
