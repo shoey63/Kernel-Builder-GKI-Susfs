@@ -1,0 +1,47 @@
+name: Kernel DB Maintenance
+on:
+  schedule:
+    - cron: '0 10 * * *'
+  workflow_dispatch:
+
+jobs:
+  update-database:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write 
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        # jq and curl are usually pre-installed, but this ensures they are available
+        run: sudo apt-get update && sudo apt-get install -y jq curl
+
+      - name: Make scripts executable
+        run: |
+          chmod +x scripts/update_kernel_db.sh
+          chmod +x scripts/generate_full_db.sh
+
+      - name: Run Database Update
+        run: ./scripts/update_kernel_db.sh
+
+      - name: Commit and Push Changes
+        run: |
+          # Configure the GitHub Actions bot identity
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          # Stage the database file
+          git add tools/master_kernel_db.json
+          
+          # Check if there are actually any changes staged
+          if git diff --staged --quiet; then
+            echo "[-] No new tags found. Nothing to commit."
+          else
+            echo "[+] Changes detected. Committing to repository..."
+            # [skip ci] prevents this commit from accidentally triggering other workflows
+            git commit -m "chore: auto-update kernel database [skip ci]"
+            git push
+          fi
