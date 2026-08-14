@@ -22,6 +22,12 @@ on:
         required: true
         type: string
 
+      kernel_android12:
+        description: "Force android12 for kernel 5.10-lts?"
+        required: false
+        type: boolean
+        default: false
+
       root_manager:
         description: "Root Environment"
         required: false
@@ -160,7 +166,13 @@ jobs:
 
               # Map standard GKI kernel bases to their logical LTS branches
               case "$BASE_VER" in
-                  "5.10") ANDROID_VER="android13" ;;
+                  "5.10") 
+                      if [ "${{ inputs.kernel_android12 }}" = "true" ]; then
+                          ANDROID_VER="android12"
+                      else
+                          ANDROID_VER="android13"
+                      fi
+                      ;;
                   "5.15") ANDROID_VER="android14" ;;
                   "6.1")  ANDROID_VER="android14" ;;
                   "6.6")  ANDROID_VER="android15" ;;
