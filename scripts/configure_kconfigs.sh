@@ -72,14 +72,12 @@ if [ "$WITH_CUSTOM" = "true" ]; then
         # --- THE FINAL BOSS BYPASS (MONOLITHIC MODULE ALIGNMENT) ---
         if [ -f "modules.bzl" ]; then
             echo ">>> Syncing Kleaf's expected module list with monolithic payloads..."
-            
-            # Define the exact modules we baked into vmlinux
+    
+            # Define the exact modules we baked into vmlinux via 0002 patch
             BAKED_MODULES=(
-                "btbcm.ko" "btqca.ko" "hci_uart.ko" "mii.ko" 
-                "cdc_eem.ko" "cdc_ether.ko" "cdc_ncm.ko" 
-                "usbnet.ko" "bluetooth.ko" "rfkill.ko"
+                "bluetooth.ko" "hci_uart.ko" "btusb.ko" "btsdio.ko" "btbcm.ko" "btqca.ko" "rfkill.ko" "rfcomm.ko" "bnep.ko" "hidp.ko" "cmtp.ko" "nfc.ko" "nci.ko" "hci.ko"
             )
-            
+
              # Dynamically erase only our baked modules from the attendance sheet
             for mod in "${BAKED_MODULES[@]}"; do
                 sed -i "/$mod/d" modules.bzl

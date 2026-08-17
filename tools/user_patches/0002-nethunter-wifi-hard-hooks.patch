@@ -4,12 +4,16 @@ Subject: [PATCH] Nethunter WiFi Makefile Hard-Hooks
 
 --- a/net/Makefile
 +++ b/net/Makefile
-@@ -1,2 +1,5 @@
+@@ -1 +1,8 @@
  # SPDX-License-Identifier: GPL-2.0
 +
-+# --- NETHUNTER DIRECTORY HOOK ---
-+obj-y += wireless/ mac80211/
- #
++# --- NETHUNTER DIRECTORY ROOT HOOK ---
++override CONFIG_MAC80211 := y
++override CONFIG_RFKILL := y
++override CONFIG_BT := y
++override CONFIG_NFC := y
++obj-y += wireless/ mac80211/ rfkill/ bluetooth/ nfc/
+ 
 --- a/net/wireless/Makefile
 +++ b/net/wireless/Makefile
 @@ -1,2 +1,9 @@
@@ -22,6 +26,7 @@ Subject: [PATCH] Nethunter WiFi Makefile Hard-Hooks
 +ccflags-y += -DCONFIG_CFG80211=1 -DCONFIG_CFG80211_WEXT=1
 +ccflags-y += -DCONFIG_WIRELESS_EXT=1 -DCONFIG_WEXT_CORE=1 -DCONFIG_WEXT_PROC=1 -DCONFIG_WEXT_SPY=1 -DCONFIG_WEXT_PRIV=1
  obj-$(CONFIG_CFG80211) += cfg80211.o
+ 
 --- a/net/mac80211/Makefile
 +++ b/net/mac80211/Makefile
 @@ -1,2 +1,7 @@
@@ -32,39 +37,92 @@ Subject: [PATCH] Nethunter WiFi Makefile Hard-Hooks
 +obj-y += mac80211.o
 +ccflags-y += -DCONFIG_MAC80211=1 -DCONFIG_MAC80211_MESH=1 -DCONFIG_MAC80211_RC_MINSTREL=1
  obj-$(CONFIG_MAC80211) += mac80211.o
+ 
 --- a/drivers/net/wireless/Makefile
 +++ b/drivers/net/wireless/Makefile
-@@ -1,2 +1,5 @@
+@@ -1 +1,4 @@
  # SPDX-License-Identifier: GPL-2.0
 +
 +# --- NETHUNTER DIRECTORY HOOK ---
 +obj-y += realtek/
- #
+ 
 --- a/net/rfkill/Makefile
 +++ b/net/rfkill/Makefile
-@@ -1,2 +1,6 @@
- # SPDX-License-Identifier: GPL-2.0
-+
-+# --- NETHUNTER RFKILL HARD HOOK ---
-+obj-y += rfkill.o
-+ccflags-y += -DCONFIG_RFKILL=1
+@@ -6,4 +6,5 @@
+ rfkill-y			+= core.o
+-rfkill-$(CONFIG_RFKILL_INPUT)	+= input.o
+-obj-$(CONFIG_RFKILL)		+= rfkill.o
++rfkill-y			+= input.o
++obj-y				+= rfkill.o
+ obj-$(CONFIG_RFKILL_GPIO)	+= rfkill-gpio.o
++ccflags-y += -DCONFIG_RFKILL=1 -DCONFIG_RFKILL_INPUT=1
  
 --- a/net/bluetooth/Makefile
 +++ b/net/bluetooth/Makefile
-@@ -1,2 +1,6 @@
+@@ -1 +1,9 @@
  # SPDX-License-Identifier: GPL-2.0
 +
-+# --- NETHUNTER BLUETOOTH CORE HOOK ---
++# --- NETHUNTER BLUETOOTH CORE & PROTOCOLS HOOK ---
 +obj-y += bluetooth.o
-+ccflags-y += -DCONFIG_BT=1
++obj-y += rfcomm/
++obj-y += bnep/
++obj-y += hidp/
++obj-y += cmtp/
++ccflags-y += -DCONFIG_BT=1 -DCONFIG_BT_RFCOMM=1 -DCONFIG_BT_BNEP=1 -DCONFIG_BT_HIDP=1 -DCONFIG_BT_CMTP=1
  
 --- a/drivers/bluetooth/Makefile
 +++ b/drivers/bluetooth/Makefile
-@@ -1,2 +1,8 @@
+@@ -1 +1,10 @@
  # SPDX-License-Identifier: GPL-2.0
 +
 +# --- NETHUNTER BLUETOOTH DRIVER HOOK ---
 +obj-y += btusb.o
 +obj-y += hci_uart.o
 +hci_uart-y += hci_h4.o
-+ccflags-y += -DCONFIG_BT_HCIBTUSB=1 -DCONFIG_BT_HCIUART=1 -DCONFIG_BT_HCIUART_H4=1
++obj-y += btsdio.o
++obj-y += btbcm.o
++obj-y += btqca.o
++ccflags-y += -DCONFIG_BT_HCIBTUSB=1 -DCONFIG_BT_HCIUART=1 -DCONFIG_BT_HCIUART_H4=1 -DCONFIG_BT_HCIBTSDIO=1 -DCONFIG_BT_BCM=1 -DCONFIG_BT_QCA=1
+ 
+--- a/net/bluetooth/rfcomm/Makefile
++++ b/net/bluetooth/rfcomm/Makefile
+@@ -1 +1,4 @@
+ # SPDX-License-Identifier: GPL-2.0
++
++# --- NETHUNTER RFCOMM HOOK ---
++obj-y += rfcomm.o
+ 
+--- a/net/bluetooth/bnep/Makefile
++++ b/net/bluetooth/bnep/Makefile
+@@ -1 +1,4 @@
+ # SPDX-License-Identifier: GPL-2.0
++
++# --- NETHUNTER BNEP HOOK ---
++obj-y += bnep.o
+ 
+--- a/net/bluetooth/hidp/Makefile
++++ b/net/bluetooth/hidp/Makefile
+@@ -1 +1,4 @@
+ # SPDX-License-Identifier: GPL-2.0
++
++# --- NETHUNTER HIDP HOOK ---
++obj-y += hidp.o
+ 
+--- a/net/bluetooth/cmtp/Makefile
++++ b/net/bluetooth/cmtp/Makefile
+@@ -1 +1,4 @@
+ # SPDX-License-Identifier: GPL-2.0
++
++# --- NETHUNTER CMTP HOOK ---
++obj-y += cmtp.o
+ 
+--- a/net/nfc/Makefile
++++ b/net/nfc/Makefile
+@@ -1 +1,7 @@
+ # SPDX-License-Identifier: GPL-2.0
++
++# --- NETHUNTER NFC HOOK ---
++obj-y += nfc.o
++obj-y += nci/
++obj-y += hci/
++ccflags-y += -DCONFIG_NFC=1 -DCONFIG_NFC_NCI=1 -DCONFIG_NFC_HCI=1

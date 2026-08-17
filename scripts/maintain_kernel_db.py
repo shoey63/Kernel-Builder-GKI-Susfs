@@ -118,7 +118,7 @@ def main():
             if b["date"] in ["2025-06", "2025-07"]:
                 branch_depth = 40000
             else:
-                branch_depth = 5000  # Shallow scan for newer branches and LTS
+                branch_depth = 40000  # Shallow scan for newer branches and LTS
         else:
             # Incremental build: Always use the fast 300 commit limit
             branch_depth = commit_depth
