@@ -172,6 +172,19 @@ else
   echo "  -> Kernel $K_VER.$K_PATCH detected. Natively expects 4 arguments. Skipping."
 fi
 
+# 5.6 Fix fs/open.c API Mismatch (3 args to 2 args for Linux 6.12+)
+echo ">>> Checking getname_flags API mismatch in fs/open.c..."
+
+# Only check if building 6.12 or newer
+if [ "$K_VER" = "6" ] && [ "$K_PATCH" -ge "12" ]; then
+  if grep -q "getname_flags(filename, lookup_flags, NULL)" common/fs/open.c; then
+    echo "  -> Kernel 6.12+ detected. Modifying getname_flags to use 2 arguments..."
+    sed -i 's/getname_flags(filename, lookup_flags, NULL)/getname_flags(filename, lookup_flags)/g' common/fs/open.c
+    echo "  -> fs/open.c API mismatch resolved for 6.12+!"
+  else
+    echo "  -> Kernel 6.12+ detected, but 2-arg getname_flags is already present. Skipping."
+  fi
+fi
 
 # 6. Final Validation
 echo ">>> Checking for unresolved patch rejections..."
