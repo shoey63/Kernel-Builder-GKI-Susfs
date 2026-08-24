@@ -391,93 +391,113 @@ jobs:
           mkdir -p out/final
           echo -e "MANIFEST_URL=${MANIFEST_URL}\nMANIFEST_BRANCH=${MANIFEST_BRANCH}\nOTA_URL=${OTA_URL}\nTIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')" > out/final/repack_metadata.txt
 
-          # Sanitize inputs.build_name: replace spaces and slashes with underscores
           SAFE_BUILD_NAME=$(echo "${{ inputs.build_name }}" | tr ' /' '__')
-
           AK3_REPO="https://github.com/shoey63/AnyKernel3.git"
           AK3_BRANCH="master"
 
-          if [ "$REPACK_ENABLED" != "true" ]; then
-            echo ">>> No OTA provided. Falling back to AnyKernel3 Zip generation..."
+          # ---------------------------------------------------------
+          # 1. SETUP ANYKERNEL3 BASE
+          # ---------------------------------------------------------
+          git clone --depth=1 -b "$AK3_BRANCH" "$AK3_REPO" AnyKernel3-Builder
+          rm -rf AnyKernel3-Builder/.git AnyKernel3-Builder/README.md AnyKernel3-Builder/*placeholder
 
-            # Prepend root manager to the standalone AK3 artifact name
-            echo "ARTIFACT_NAME=${{ inputs.root_manager }}-${{ inputs.target_version }}-AK3" >> $GITHUB_ENV
-
-            git clone --depth=1 -b "$AK3_BRANCH" "$AK3_REPO" AnyKernel3-Builder
-            rm -rf AnyKernel3-Builder/.git AnyKernel3-Builder/README.md AnyKernel3-Builder/*placeholder
-            
-            # ---------------------------------------------------------
-            # DYNAMIC HARVEST: Locate and copy the core Image
-            # ---------------------------------------------------------
-            echo ">>> Locating kernel Image..."
-            IMAGE_PATH=$(find . -name "Image" -type f | grep -v "AnyKernel3" | head -n 1)
-            if [ -n "$IMAGE_PATH" ]; then
-              cp -f "$IMAGE_PATH" AnyKernel3-Builder/
-              echo ">>> Successfully copied Image from: $IMAGE_PATH"
-            else
-              echo ">>> ERROR: Kernel Image not found in workspace!"
-              exit 1
-            fi
-          
-            # ---------------------------------------------------------
-            # DYNAMIC HARVEST: Locate and copy the core Image
-            # ---------------------------------------------------------
-            echo ">>> Locating kernel Image..."
-            IMAGE_PATH=$(find . -name "Image" -type f | grep -v "AnyKernel3" | head -n 1)
-            if [ -n "$IMAGE_PATH" ]; then
-              cp -f "$IMAGE_PATH" AnyKernel3-Builder/
-              echo ">>> Successfully copied Image from: $IMAGE_PATH"
-            else
-              echo ">>> ERROR: Kernel Image not found in workspace!"
-              exit 1
-            fi
-          
-            # ---------------------------------------------------------
-            # DYNAMIC HARVEST: Locate and package .ko modules for AK3
-            # ---------------------------------------------------------
-            echo ">>> Harvesting compiled .ko modules..."
-            mkdir -p AnyKernel3-Builder/modules/vendor/lib/modules/
-            
-            # Sweep the entire workspace for any compiled kernel objects
-            find . -name "*.ko" -type f -exec cp {} AnyKernel3-Builder/modules/vendor/lib/modules/ \;
-            
-            # Verify if modules were actually found and copied
-            ls -lah AnyKernel3-Builder/modules/vendor/lib/modules/ || echo "No modules found."
-
-            cp -r AnyKernel3-Builder/* out/final/
-
+          echo ">>> Locating kernel Image..."
+          IMAGE_PATH=$(find . -name "Image" -type f | grep -v "AnyKernel3" | head -n 1)
+          if [ -n "$IMAGE_PATH" ]; then
+            cp -f "$IMAGE_PATH" AnyKernel3-Builder/
+            echo ">>> Successfully copied Image from: $IMAGE_PATH"
           else
-            echo ">>> OTA Repack detected. Outputting standard boot image and AK3 zip."
-            # Use the sanitized name for the parent artifact zip
-            echo "ARTIFACT_NAME=${SAFE_BUILD_NAME}" >> $GITHUB_ENV
+            echo "[-] ERROR: Kernel Image not found in workspace!"
+            exit 1
+          fi
 
-            # Generate the specific AK3 zip for inclusion in the artifact
-            git clone --depth=1 -b "$AK3_BRANCH" "$AK3_REPO" AnyKernel3-Builder
-            rm -rf AnyKernel3-Builder/.git AnyKernel3-Builder/README.md AnyKernel3-Builder/*placeholder
-            
-            # ---------------------------------------------------------
-            # DYNAMIC HARVEST: Locate and copy the core Image
-            # ---------------------------------------------------------
-            echo ">>> Locating kernel Image..."
-            IMAGE_PATH=$(find . -name "Image" -type f | grep -v "AnyKernel3" | head -n 1)
-            if [ -n "$IMAGE_PATH" ]; then
-              cp -f "$IMAGE_PATH" AnyKernel3-Builder/
-              echo ">>> Successfully copied Image from: $IMAGE_PATH"
-            else
-              echo ">>> ERROR: Kernel Image not found in workspace!"
-              exit 1
-            fi
+          # ---------------------------------------------------------
+          # 2. TARGETED .KO HARVESTING (Strictly Magisk/KSU Only)
+          # ---------------------------------------------------------
+          echo ">>> Harvesting TARGET wireless .ko modules..."
           
-            # ---------------------------------------------------------
-            # DYNAMIC HARVEST: Locate and package .ko modules for AK3
-            # ---------------------------------------------------------
-            echo ">>> Harvesting compiled .ko modules..."
-            mkdir -p AnyKernel3-Builder/modules/vendor/lib/modules/
-            
-            # Sweep the entire workspace for any compiled kernel objects
-            find . -name "*.ko" -type f -exec cp {} AnyKernel3-Builder/modules/vendor/lib/modules/ \;
+          # Stage the Magisk payload directory
+          mkdir -p out/final/kmod_payload
 
-            # Zip the AK3 payload explicitly into out/final/ with root manager prepended
+          # Define the target driver patterns (NO AnyKernel3 injection)
+          MODULE_PATTERNS=("cfg80211.ko" "mac80211.ko" "mt76*.ko")
+
+          FOUND_MODULES=false
+          for pattern in "${MODULE_PATTERNS[@]}"; do
+            find . -name "$pattern" -type f | grep -v "AnyKernel3" | while read -r mod; do
+              echo "  -> Staging driver for systemless module: $(basename "$mod")"
+              cp -f "$mod" out/final/kmod_payload/
+              FOUND_MODULES=true
+            done
+          done
+          
+          # ---------------------------------------------------------
+          # 2.5 INJECT FIRMWARE INTO MAGISK MODULE
+          # ---------------------------------------------------------
+          echo ">>> Injecting ALFA MT7662 Firmware into module..."
+          mkdir -p out/final/kmod_payload/system/etc/firmware/mediatek
+          
+          curl -s -L -o out/final/kmod_payload/system/etc/firmware/mediatek/mt7662_rom_patch.bin "https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/mediatek/mt7662_rom_patch.bin"
+          curl -s -L -o out/final/kmod_payload/system/etc/firmware/mediatek/mt7662.bin "https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/mediatek/mt7662.bin"
+          
+          # ---------------------------------------------------------
+          # 3. BUILD FLASHABLE MAGISK/KSU MODULE
+          # ---------------------------------------------------------
+          if ls out/final/kmod_payload/*.ko 1> /dev/null 2>&1; then
+            echo ">>> Assembling NetHunter Wireless Driver Module..."
+
+            # Generate module.prop
+            cat << 'EOF' > out/final/kmod_payload/module.prop
+          id=alfa-mt7612u-driver
+          name=ALFA MT7612U & Wireless Stack
+          version=1.0
+          versionCode=1
+          author=komodo-builder
+          description=Dynamically loads out-of-tree MT7612U Wi-Fi drivers and hardware ID bindings.
+          EOF
+
+            # Generate resilient service.sh with auto-load and USB ID binding
+            cat << 'EOF' > out/final/kmod_payload/service.sh
+          #!/system/bin/sh
+          MODDIR=${0%/*}
+
+          # Wait for system boot to finish
+          until [ "$(getprop sys.boot_completed)" = "1" ]; do
+              sleep 2
+          done
+
+          # Multi-pass insmod to satisfy dependencies (cfg80211 -> mac80211 -> mt76 -> mt76x2u)
+          for pass in 1 2 3 4; do
+              for ko in "$MODDIR"/*.ko; do
+                  [ -f "$ko" ] && insmod "$ko" >/dev/null 2>&1
+              done
+          done
+
+          # Auto-bind the ALFA AWUS036ACM hardware ID
+          echo "0e8d 7612" > /sys/bus/usb/drivers/mt76x2u/new_id 2>/dev/null || true
+          EOF
+            chmod +x out/final/kmod_payload/service.sh
+
+            # Package Magisk Module Zip
+            cd out/final/kmod_payload
+            zip -r9 "../${SAFE_BUILD_NAME}-NetHunter-Modules.zip" *
+            cd ../../..
+            echo ">>> Successfully generated ${SAFE_BUILD_NAME}-NetHunter-Modules.zip"
+          else
+            echo ">>> No target wireless modules found. Skipping Magisk module creation."
+          fi
+          rm -rf out/final/kmod_payload
+
+          # ---------------------------------------------------------
+          # 4. FINALIZE AK3 / OTA ARTIFACTS
+          # ---------------------------------------------------------
+          if [ "$REPACK_ENABLED" != "true" ]; then
+            echo "ARTIFACT_NAME=${{ inputs.root_manager }}-${{ inputs.target_version }}-AK3" >> $GITHUB_ENV
+            cd AnyKernel3-Builder
+            zip -r9 "../out/final/${{ inputs.root_manager }}-${{ inputs.target_version }}-AK3.zip" *
+            cd ..
+          else
+            echo "ARTIFACT_NAME=${SAFE_BUILD_NAME}" >> $GITHUB_ENV
             cd AnyKernel3-Builder
             zip -r9 "../out/final/${{ inputs.root_manager }}-${{ inputs.target_version }}-AK3.zip" *
             cd ..
