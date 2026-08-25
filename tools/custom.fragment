@@ -9,10 +9,8 @@ CONFIG_USB_NET_DRIVERS=y
 CONFIG_WLAN=y
 
 # ==========================================
-# 2. CORE WIRELESS 
+# 2. CORE WIRELESS (Master buses in 0003)
 # ==========================================
-CONFIG_CFG80211=m
-CONFIG_MAC80211=m
 CONFIG_MAC80211_LEDS=y
 CONFIG_LEDS_CLASS=y
 CONFIG_CRYPTO_CCM=m
@@ -20,14 +18,16 @@ CONFIG_CRYPTO_GCM=m
 CONFIG_CRYPTO_CMAC=m
 
 # ==========================================
-# 3. MEDIATEK ALFA ADAPTER
+# 3. MEDIATEK ALFA ADAPTER (Master in 0003)
 # ==========================================
 CONFIG_MT76_CORE=m
 CONFIG_MT76_USB=m
 CONFIG_MT76x02_LIB=m
 CONFIG_MT76x02_USB=m
 CONFIG_MT76x2_COMMON=m
-CONFIG_MT76x2U=m
+#CONFIG_MT76x2U=m
+CONFIG_MT76_LEDS=y
+
 
 # ==========================================
 # 4. WIREGUARD & NETFILTER
@@ -46,15 +46,12 @@ CONFIG_USB_F_HID=y
 CONFIG_USB_CONFIGFS_F_HID=y
 
 # ==========================================
-# 6. BLUETOOTH HCI SNIFFING
+# 6. BLUETOOTH USB SUB-DRIVERS
 # ==========================================
-CONFIG_BT=m
-CONFIG_BT_HCIBTUSB=m
 # CONFIG_BT_HCIBTUSB_AUTOSUSPEND is not set
 CONFIG_BT_HCIBTUSB_BCM=y
 CONFIG_BT_HCIBTUSB_MTK=y
 CONFIG_BT_HCIBTUSB_RTL=y
-CONFIG_BT_HCIBFUSB=m
 
 # ==========================================
 # 7. SDR & REALTEK RTL28XXU TUNER
@@ -67,13 +64,11 @@ CONFIG_MEDIA_USB_SUPPORT=y
 CONFIG_MEDIA_DIGITAL_TV_SUPPORT=y
 CONFIG_MEDIA_SDR_SUPPORT=y
 CONFIG_DVB_CORE=m
-CONFIG_DVB_USB_V2=m
 CONFIG_DVB_USB_RTL28XXU=m
 
 # ==========================================
-# 8. ATHEROS WIRELESS (TL-WN722N)
+# 8. ATHEROS CARL9170 & DEBUGFS
 # ==========================================
-CONFIG_ATH9K_HTC=m
 CONFIG_ATH9K_HTC_DEBUGFS=y
 CONFIG_CARL9170=m
 

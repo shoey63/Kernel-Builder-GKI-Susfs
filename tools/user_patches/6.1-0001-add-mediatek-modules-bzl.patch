@@ -1,8 +1,8 @@
 diff --git a/modules.bzl b/modules.bzl
-index 52d92225a..b23f06511 100644
+index 52d92225a..22f97c0c3 100644
 --- a/modules.bzl
 +++ b/modules.bzl
-@@ -8,6 +8,18 @@ This module contains a full list of kernel modules
+@@ -8,6 +8,22 @@ This module contains a full list of kernel modules
  
  _COMMON_GKI_MODULES_LIST = [
      # keep sorted
@@ -18,6 +18,10 @@ index 52d92225a..b23f06511 100644
 +    "drivers/net/wireless/ath/ath9k/ath9k_common.ko",
 +    "drivers/net/wireless/ath/ath9k/ath9k_htc.ko",
 +    "drivers/net/wireless/ath/ath9k/ath9k_hw.ko",
++    "drivers/bluetooth/bfusb.ko",
++    "drivers/bluetooth/btintel.ko",
++    "drivers/bluetooth/btrtl.ko",
++    "drivers/bluetooth/btusb.ko",
      "drivers/block/zram/zram.ko",
      "drivers/bluetooth/btbcm.ko",
      "drivers/bluetooth/btqca.ko",
