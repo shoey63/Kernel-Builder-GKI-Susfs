@@ -2,19 +2,25 @@
 # 1. KERNEL UNLOCKS & DEPENDENCIES
 # ==========================================
 CONFIG_EXPERT=y
-CONFIG_I2C=y
+CONFIG_USB_SUPPORT=y
+CONFIG_USB=y
 CONFIG_USB_NET_DRIVERS=y
-CONFIG_WLAN_VENDOR_ATH=y
-CONFIG_WLAN_VENDOR_REALTEK=y
+CONFIG_WLAN=y
 CONFIG_WLAN_VENDOR_MEDIATEK=y
+CONFIG_WLAN_VENDOR_ATH=y
 
 # ==========================================
-# 2. MEDIATEK ALFA ADAPTER & CRYPTO
+# 2. CORE WIRELESS & CRYPTO
 # ==========================================
+CONFIG_CFG80211=m
+CONFIG_MAC80211=m
 CONFIG_CRYPTO_CCM=m
 CONFIG_CRYPTO_GCM=m
 CONFIG_CRYPTO_CMAC=m
 
+# ==========================================
+# 3. MEDIATEK ALFA ADAPTER
+# ==========================================
 CONFIG_MT76_CORE=m
 CONFIG_MT76_USB=m
 CONFIG_MT76x02_LIB=m
@@ -23,7 +29,7 @@ CONFIG_MT76x2_COMMON=m
 CONFIG_MT76x2U=m
 
 # ==========================================
-# 3. WIREGUARD & NETFILTER
+# 4. WIREGUARD & NETFILTER
 # ==========================================
 CONFIG_WIREGUARD=y
 CONFIG_NET_UDP_TUNNEL=y
@@ -33,38 +39,12 @@ CONFIG_NETFILTER_XT_MATCH_MARK=y
 CONFIG_NETFILTER_XT_MATCH_POLICY=y
 
 # ==========================================
-# 4. BADUSB / HID GADGET
+# 5. BADUSB / HID GADGET
 # ==========================================
 CONFIG_USB_F_HID=m
 CONFIG_USB_CONFIGFS_F_HID=y
 
 # ==========================================
-# 5. BLUETOOTH HCI SNIFFING
-# ==========================================
-CONFIG_BT_HCIBTUSB=m
-CONFIG_BT_HCIBTUSB_AUTOSUSPEND=n
-CONFIG_BT_HCIBFUSB=m
-
-# ==========================================
-# 6. SDR (SOFTWARE DEFINED RADIO)
-# ==========================================
-CONFIG_MEDIA_SUPPORT=y
-CONFIG_MEDIA_USB_SUPPORT=y
-CONFIG_MEDIA_DIGITAL_TV_SUPPORT=y
-CONFIG_MEDIA_SDR_SUPPORT=y
-CONFIG_DVB_CORE=m
-CONFIG_USB_RTL28XXU=m
-
-# ==========================================
-# 7. ATHEROS WIRELESS (TL-WN722N)
+# 6. ATHEROS WIRELESS (ISOLATION TEST)
 # ==========================================
 CONFIG_ATH9K_HTC=m
-CONFIG_ATH9K_HTC_DEBUGFS=y
-CONFIG_CARL9170=m
-CONFIG_ATH_CARDS=m
-
-# ==========================================
-# 8. USB MITM ETHERNET
-# ==========================================
-CONFIG_USB_USBNET=m
-CONFIG_USB_NET_CDCETHER=m
