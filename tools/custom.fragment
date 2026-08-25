@@ -1,12 +1,16 @@
-# tools/custom.fragment
-CONFIG_WIREGUARD=y
-CONFIG_NET_UDP_TUNNEL=y
-CONFIG_NETFILTER_XT_MATCH_HASHLIMIT=y
-CONFIG_NETFILTER_XT_MATCH_LENGTH=y
-CONFIG_NETFILTER_XT_MATCH_MARK=y
-CONFIG_NETFILTER_XT_MATCH_POLICY=y
+# ==========================================
+# 1. KERNEL UNLOCKS & DEPENDENCIES
+# ==========================================
+CONFIG_EXPERT=y
+CONFIG_I2C=y
+CONFIG_USB_NET_DRIVERS=y
+CONFIG_WLAN_VENDOR_ATH=y
+CONFIG_WLAN_VENDOR_REALTEK=y
+CONFIG_WLAN_VENDOR_MEDIATEK=y
 
-# --- MAC80211 CRYPTO DEPENDENCIES ---
+# ==========================================
+# 2. MEDIATEK ALFA ADAPTER & CRYPTO
+# ==========================================
 CONFIG_CRYPTO_CCM=m
 CONFIG_CRYPTO_GCM=m
 CONFIG_CRYPTO_CMAC=m
@@ -18,42 +22,49 @@ CONFIG_MT76x02_USB=m
 CONFIG_MT76x2_COMMON=m
 CONFIG_MT76x2U=m
 
-# NetHunter BadUSB / HID Gadget Support
+# ==========================================
+# 3. WIREGUARD & NETFILTER
+# ==========================================
+CONFIG_WIREGUARD=y
+CONFIG_NET_UDP_TUNNEL=y
+CONFIG_NETFILTER_XT_MATCH_HASHLIMIT=y
+CONFIG_NETFILTER_XT_MATCH_LENGTH=y
+CONFIG_NETFILTER_XT_MATCH_MARK=y
+CONFIG_NETFILTER_XT_MATCH_POLICY=y
+
+# ==========================================
+# 4. BADUSB / HID GADGET
+# ==========================================
 CONFIG_USB_F_HID=m
 CONFIG_USB_CONFIGFS_F_HID=y
 
-# NetHunter External Bluetooth USB Support
+# ==========================================
+# 5. BLUETOOTH HCI SNIFFING
+# ==========================================
 CONFIG_BT_HCIBTUSB=m
 CONFIG_BT_HCIBTUSB_AUTOSUSPEND=n
 CONFIG_BT_HCIBFUSB=m
-CONFIG_BT_HCIUART_H4=y
-CONFIG_BT_HCIUART_BCSP=y
 
-# NetHunter SDR (Software Defined Radio) Support
-CONFIG_MEDIA_SUPPORT=m
+# ==========================================
+# 6. SDR (SOFTWARE DEFINED RADIO)
+# ==========================================
+CONFIG_MEDIA_SUPPORT=y
 CONFIG_MEDIA_USB_SUPPORT=y
 CONFIG_MEDIA_DIGITAL_TV_SUPPORT=y
 CONFIG_MEDIA_SDR_SUPPORT=y
 CONFIG_DVB_CORE=m
 CONFIG_USB_RTL28XXU=m
-CONFIG_MEDIA_TUNER_FC0012=m
-CONFIG_MEDIA_TUNER_FC0013=m
-CONFIG_MEDIA_TUNER_R820T=m
 
-# NetHunter Atheros Wireless Support
+# ==========================================
+# 7. ATHEROS WIRELESS (TL-WN722N)
+# ==========================================
 CONFIG_ATH9K_HTC=m
 CONFIG_ATH9K_HTC_DEBUGFS=y
 CONFIG_CARL9170=m
 CONFIG_ATH_CARDS=m
 
-# NetHunter Realtek Wireless Support
-CONFIG_WLAN_VENDOR_REALTEK=y
-CONFIG_RTL8187=m
-CONFIG_RTL8XXXU=m
-CONFIG_RTL8XXXU_UNTESTED=y
-
-# NetHunter USB Ethernet / MITM Support
+# ==========================================
+# 8. USB MITM ETHERNET
+# ==========================================
 CONFIG_USB_USBNET=m
 CONFIG_USB_NET_CDCETHER=m
-CONFIG_USB_NET_RNDIS_HOST=m
-CONFIG_USB_NET_RNDIS_WLAN=m
