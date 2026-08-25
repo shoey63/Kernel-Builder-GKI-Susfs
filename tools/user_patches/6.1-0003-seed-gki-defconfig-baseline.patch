@@ -1,5 +1,5 @@
 diff --git a/arch/arm64/configs/gki_defconfig b/arch/arm64/configs/gki_defconfig
-index cea2e6714..2ed3ece11 100644
+index cea2e6714..874fd0d59 100644
 --- a/arch/arm64/configs/gki_defconfig
 +++ b/arch/arm64/configs/gki_defconfig
 @@ -299,6 +299,8 @@ CONFIG_BT_HCIUART=m
@@ -11,7 +11,15 @@ index cea2e6714..2ed3ece11 100644
  CONFIG_RFKILL=m
  CONFIG_NFC=m
  CONFIG_PCI=y
-@@ -380,7 +382,7 @@ CONFIG_USB_NET_AQC111=m
+@@ -373,14 +375,14 @@ CONFIG_USB_NET_CDC_EEM=m
+ # CONFIG_USB_NET_ZAURUS is not set
+ CONFIG_USB_NET_AQC111=m
+ # CONFIG_WLAN_VENDOR_ADMTEK is not set
+-# CONFIG_WLAN_VENDOR_ATH is not set
++CONFIG_ATH9K_HTC=m
+ # CONFIG_WLAN_VENDOR_ATMEL is not set
+ # CONFIG_WLAN_VENDOR_BROADCOM is not set
+ # CONFIG_WLAN_VENDOR_CISCO is not set
  # CONFIG_WLAN_VENDOR_INTEL is not set
  # CONFIG_WLAN_VENDOR_INTERSIL is not set
  # CONFIG_WLAN_VENDOR_MARVELL is not set

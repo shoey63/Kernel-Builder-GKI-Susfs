@@ -1,7 +1,8 @@
+diff --git a/modules.bzl b/modules.bzl
+index 52d92225a..b23f06511 100644
 --- a/modules.bzl
 +++ b/modules.bzl
-@@ -6,6 +6,14 @@
- """
+@@ -8,6 +8,18 @@ This module contains a full list of kernel modules
  
  _COMMON_GKI_MODULES_LIST = [
      # keep sorted
@@ -13,5 +14,10 @@
 +    "drivers/net/wireless/mediatek/mt76/mt76x02-usb.ko",
 +    "drivers/net/wireless/mediatek/mt76/mt76x2/mt76x2-common.ko",
 +    "drivers/net/wireless/mediatek/mt76/mt76x2/mt76x2u.ko",
++    "drivers/net/wireless/ath/ath.ko",
++    "drivers/net/wireless/ath/ath9k/ath9k_common.ko",
++    "drivers/net/wireless/ath/ath9k/ath9k_htc.ko",
++    "drivers/net/wireless/ath/ath9k/ath9k_hw.ko",
      "drivers/block/zram/zram.ko",
      "drivers/bluetooth/btbcm.ko",
+     "drivers/bluetooth/btqca.ko",

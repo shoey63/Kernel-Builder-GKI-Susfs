@@ -2,18 +2,19 @@
 # 1. KERNEL UNLOCKS & DEPENDENCIES
 # ==========================================
 CONFIG_EXPERT=y
+CONFIG_I2C=y
 CONFIG_USB_SUPPORT=y
 CONFIG_USB=y
 CONFIG_USB_NET_DRIVERS=y
 CONFIG_WLAN=y
-CONFIG_WLAN_VENDOR_MEDIATEK=y
-CONFIG_WLAN_VENDOR_ATH=y
 
 # ==========================================
-# 2. CORE WIRELESS & CRYPTO
+# 2. CORE WIRELESS 
 # ==========================================
 CONFIG_CFG80211=m
 CONFIG_MAC80211=m
+CONFIG_MAC80211_LEDS=y
+CONFIG_LEDS_CLASS=y
 CONFIG_CRYPTO_CCM=m
 CONFIG_CRYPTO_GCM=m
 CONFIG_CRYPTO_CMAC=m
@@ -39,12 +40,40 @@ CONFIG_NETFILTER_XT_MATCH_MARK=y
 CONFIG_NETFILTER_XT_MATCH_POLICY=y
 
 # ==========================================
-# 5. BADUSB / HID GADGET
+# 5. BADUSB / HID GADGET 
 # ==========================================
-CONFIG_USB_F_HID=m
+CONFIG_USB_F_HID=y
 CONFIG_USB_CONFIGFS_F_HID=y
 
 # ==========================================
-# 6. ATHEROS WIRELESS (ISOLATION TEST)
+# 6. BLUETOOTH HCI SNIFFING
+# ==========================================
+CONFIG_BT=y
+CONFIG_BT_HCIBTUSB=m
+# CONFIG_BT_HCIBTUSB_AUTOSUSPEND is not set
+CONFIG_BT_HCIBFUSB=m
+
+# ==========================================
+# 7. SDR (Smashing the Media Filter)
+# ==========================================
+# CONFIG_MEDIA_SUPPORT_FILTER is not set
+# CONFIG_MEDIA_SUBDRV_AUTOSELECT is not set
+CONFIG_MEDIA_SUPPORT=y
+CONFIG_MEDIA_USB_SUPPORT=y
+CONFIG_MEDIA_DIGITAL_TV_SUPPORT=y
+CONFIG_MEDIA_SDR_SUPPORT=y
+CONFIG_DVB_CORE=m
+CONFIG_DVB_USB_RTL28XXU=m
+
+# ==========================================
+# 8. ATHEROS WIRELESS (TL-WN722N)
 # ==========================================
 CONFIG_ATH9K_HTC=m
+CONFIG_ATH9K_HTC_DEBUGFS=y
+CONFIG_CARL9170=m
+
+# ==========================================
+# 9. USB MITM ETHERNET
+# ==========================================
+CONFIG_USB_USBNET=m
+CONFIG_USB_NET_CDCETHER=m
