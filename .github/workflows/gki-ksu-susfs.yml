@@ -412,74 +412,7 @@ jobs:
           fi
 
           # ---------------------------------------------------------
-          # 2. TARGETED .KO HARVESTING (Strictly Magisk/KSU Only)
-          # ---------------------------------------------------------
-          echo ">>> Harvesting TARGET wireless .ko modules..."
-          
-          # Stage the Magisk payload directory
-          mkdir -p out/final/kmod_payload
-
-          # Define the target driver patterns
-          MODULE_PATTERNS=("cfg80211.ko" "mac80211.ko" "mt76*.ko" "usb_f_hid.ko" "bt*.ko" "bfusb.ko" "rtl*.ko" "ath*.ko" "dvb*.ko")
-
-          FOUND_MODULES=false
-          for pattern in "${MODULE_PATTERNS[@]}"; do
-            find . -name "$pattern" -type f | grep -v "AnyKernel3" | while read -r mod; do
-              echo "  -> Staging driver for systemless module: $(basename "$mod")"
-              cp -f "$mod" out/final/kmod_payload/
-              FOUND_MODULES=true
-            done
-          done
-          
-          # ---------------------------------------------------------
-          # 2.5 INJECT FIRMWARE INTO MAGISK MODULE
-          # ---------------------------------------------------------
-          echo ">>> Injecting ALFA MT7662 Firmware into module..."
-          mkdir -p out/final/kmod_payload/system/etc/firmware/mediatek
-          
-          curl -s -L -o out/final/kmod_payload/system/etc/firmware/mediatek/mt7662_rom_patch.bin "https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/mediatek/mt7662_rom_patch.bin"
-          curl -s -L -o out/final/kmod_payload/system/etc/firmware/mediatek/mt7662.bin "https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/mediatek/mt7662.bin"
-          
-          # ---------------------------------------------------------
-          # 3. BUILD FLASHABLE MAGISK/KSU MODULE
-          # ---------------------------------------------------------
-          if ls out/final/kmod_payload/*.ko 1> /dev/null 2>&1; then
-            echo ">>> Assembling NetHunter Wireless Driver Module..."
-            
-          # Generate module.prop
-          cat << 'EOF' > out/final/kmod_payload/module.prop
-          id=alfa-mt7612u-driver
-          name=ALFA MT7612U & Wireless Stack
-          version=1.0
-          versionCode=1
-          author=komodo-builder
-          description=Dynamically loads out-of-tree MT7612U Wi-Fi drivers and hardware ID bindings.
-          EOF
-
-          # Generate resilient service.sh (Auto-load disabled, Action.sh handles power state)
-          cat << 'EOF' > out/final/kmod_payload/service.sh
-          #!/system/bin/sh
-          MODDIR=${0%/*}
-
-          # The Action button is in full control of the NetHunter stack.
-          # We only auto-bind the ALFA hardware ID so it is ready when spawned.
-          echo "0e8d 7612" > /sys/bus/usb/drivers/mt76x2u/new_id 2>/dev/null || true
-          EOF
-          
-          chmod +x out/final/kmod_payload/service.sh
-
-            # Package Magisk Module Zip
-            cd out/final/kmod_payload
-            zip -r9 "../${SAFE_BUILD_NAME}-NetHunter-Modules.zip" *
-            cd ../../..
-            echo ">>> Successfully generated ${SAFE_BUILD_NAME}-NetHunter-Modules.zip"
-          else
-            echo ">>> No target wireless modules found. Skipping Magisk module creation."
-          fi
-          rm -rf out/final/kmod_payload
-
-          # ---------------------------------------------------------
-          # 4. FINALIZE AK3 / OTA ARTIFACTS
+          # 2. FINALIZE AK3 / OTA ARTIFACTS
           # ---------------------------------------------------------
           if [ "$REPACK_ENABLED" != "true" ]; then
             echo "ARTIFACT_NAME=${{ inputs.root_manager }}-${{ inputs.target_version }}-AK3" >> $GITHUB_ENV
@@ -493,60 +426,50 @@ jobs:
             cd ..
           fi
 
-          # ---------------------------------------------------------
-          # NEW: GENERATE KSU/MAGISK MODULE FOR KERNEL OBJECTS
-          # ---------------------------------------------------------
-          echo ">>> Generating Magisk/KSU Module for Out-of-Tree Modules..."
-          mkdir -p out/final/kmod_payload
-          
-          # 1. Generate module.prop
-          cat << 'EOF' > out/final/kmod_payload/module.prop
-          id=gki-wifi-modules
-          name=GKI Out-of-Tree Modules
-          version=1.0
-          versionCode=1
-          author=komodo-builder
-          description=Dynamically injects out-of-tree .ko drivers into the GKI kernel after boot.
-          EOF
-           
-          # 2. Generate the late-start service script
-          cat << 'EOF' > out/final/kmod_payload/service.sh
-          #!/system/bin/sh
-          MODDIR=${0%/*}
-          
-          # Wait for Android to finish booting to prevent vendor driver collisions
-          until [ "$(getprop sys.boot_completed)" = "1" ]; do
-              sleep 1
-          done
-          
-          # Multi-pass injection to automatically resolve .ko dependencies
-          for i in 1 2 3; do
-              for ko in $MODDIR/*.ko; do
-                  insmod "$ko" >/dev/null 2>&1
-              done
-          done
-          EOF
-
-          chmod +x out/final/kmod_payload/service.sh
-          
-          # 3. Copy the harvested .ko files into the module root
-          cp AnyKernel3-Builder/modules/vendor/lib/modules/*.ko out/final/kmod_payload/ 2>/dev/null || true
-          
-          # 4. Zip it up as a flashable artifact (if .ko files exist) and clean up
-          if ls out/final/kmod_payload/*.ko 1> /dev/null 2>&1; then
-            cd out/final/kmod_payload
-            zip -r9 "../${SAFE_BUILD_NAME}-Module.zip" *
-            cd ../../..
-            echo ">>> Successfully generated ${SAFE_BUILD_NAME}-Module.zip"
-          else
-            echo ">>> No .ko modules found. Skipping module generation."
-          fi
-          
-          # Clean up the staging folder so it doesn't clutter the final artifact zip
-          rm -rf out/final/kmod_payload
-
           echo ">>> Final Artifact Directory:"
           ls -lah out/final/
+
+      - name: Build NetHunter KernelSU Module
+        run: |
+          echo ">>> Staging compiled wireless modules..."
+          mkdir -p /tmp/kmod_staging
+          
+          # 1. Sanitize the build name (converts spaces/slashes to a single underscore)
+          SAFE_BUILD_NAME=$(echo "${{ inputs.build_name }}" | tr ' /' '_' | tr -s '_')
+          echo "SAFE_BUILD_NAME=${SAFE_BUILD_NAME}" >> $GITHUB_ENV
+
+          # Define the target driver patterns
+          MODULE_PATTERNS=("cfg80211.ko" "mac80211.ko" "mt76*.ko" "usb_f_hid.ko" "bt*.ko" "bfusb.ko" "rtl*.ko" "ath*.ko" "dvb*.ko")
+
+          # Find and copy them into the staging directory
+          for pattern in "${MODULE_PATTERNS[@]}"; do
+            find . -name "$pattern" -type f -exec cp {} /tmp/kmod_staging/ \;
+          done
+          
+          # FAIL-SAFE: Check if any .ko files were actually found
+          KO_COUNT=$(ls -1 /tmp/kmod_staging/*.ko 2>/dev/null | wc -l)
+          if [ "$KO_COUNT" -eq 0 ]; then
+            echo ">>> No NetHunter .ko files found. Skipping NetHunter Module creation."
+            echo "HAS_NETHUNTER=false" >> $GITHUB_ENV
+            exit 0
+          fi
+          
+          echo "HAS_NETHUNTER=true" >> $GITHUB_ENV
+          
+          # Make sure the script is executable
+          chmod +x scripts/build_nethunter_module.sh
+          
+          # Execute custom builder script (Pass the SAFE name so module.prop is clean)
+          echo ">>> Executing build_nethunter_module.sh..."
+          ./scripts/build_nethunter_module.sh "/tmp/kmod_staging" "$SAFE_BUILD_NAME"
+          
+      - name: Upload NetHunter Module Artifact
+        if: env.HAS_NETHUNTER == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.SAFE_BUILD_NAME }}-NetHunter-Module
+          path: ksu_nethunter_module/
+          if-no-files-found: error
 
       # ---------------------------------------------------------
       # NEW: Compile custom Manager from source ONLY on 'test' channel
