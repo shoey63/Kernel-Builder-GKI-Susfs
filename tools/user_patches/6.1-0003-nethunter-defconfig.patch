@@ -1,5 +1,5 @@
 diff --git a/arch/arm64/configs/gki_defconfig b/arch/arm64/configs/gki_defconfig
-index cea2e6714..3059cda06 100644
+index cea2e6714..3efb9d346 100644
 --- a/arch/arm64/configs/gki_defconfig
 +++ b/arch/arm64/configs/gki_defconfig
 @@ -1,4 +1,3 @@
@@ -83,17 +83,7 @@ index cea2e6714..3059cda06 100644
  CONFIG_EDAC=y
  CONFIG_RTC_CLASS=y
  # CONFIG_RTC_DRV_BRCMSTB is not set
-@@ -721,9 +728,7 @@ CONFIG_CRYPTO_DES=y
- CONFIG_CRYPTO_ADIANTUM=y
- CONFIG_CRYPTO_HCTR2=y
- CONFIG_CRYPTO_CHACHA20POLY1305=y
--CONFIG_CRYPTO_CCM=y
- CONFIG_CRYPTO_BLAKE2B=y
--CONFIG_CRYPTO_CMAC=y
- CONFIG_CRYPTO_MD5=y
- CONFIG_CRYPTO_XCBC=y
- CONFIG_CRYPTO_LZ4=y
-@@ -744,7 +749,6 @@ CONFIG_PRINTK_CALLER=y
+@@ -744,7 +751,6 @@ CONFIG_PRINTK_CALLER=y
  CONFIG_DYNAMIC_DEBUG_CORE=y
  CONFIG_DEBUG_INFO_DWARF4=y
  CONFIG_DEBUG_INFO_BTF=y

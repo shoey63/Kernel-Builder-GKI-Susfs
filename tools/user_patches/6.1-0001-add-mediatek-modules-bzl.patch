@@ -2,7 +2,7 @@ diff --git a/modules.bzl b/modules.bzl
 index 52d92225a..d5a78fcbb 100644
 --- a/modules.bzl
 +++ b/modules.bzl
-@@ -8,6 +8,184 @@ This module contains a full list of kernel modules
+@@ -8,6 +8,182 @@ This module contains a full list of kernel modules
  
  _COMMON_GKI_MODULES_LIST = [
      # keep sorted
@@ -65,7 +65,6 @@ index 52d92225a..d5a78fcbb 100644
 +    "drivers/media/dvb-frontends/mb86a16.ko",
 +    "drivers/media/dvb-frontends/stb6000.ko",
 +    "drivers/media/dvb-frontends/dib0090.ko",
-+    "crypto/cmac.ko",
 +    "drivers/media/dvb-frontends/ds3000.ko",
 +    "drivers/media/dvb-frontends/sp887x.ko",
 +    "drivers/media/dvb-frontends/s5h1420.ko",
@@ -148,7 +147,6 @@ index 52d92225a..d5a78fcbb 100644
 +    "drivers/media/tuners/mxl301rf.ko",
 +    "drivers/media/dvb-frontends/tda8083.ko",
 +    "drivers/media/usb/dvb-usb-v2/dvb-usb-rtl28xxu.ko",
-+    "crypto/ccm.ko",
 +    "drivers/media/dvb-frontends/ix2505v.ko",
 +    "drivers/media/dvb-frontends/mxl5xx.ko",
 +    "drivers/media/dvb-frontends/s921.ko",

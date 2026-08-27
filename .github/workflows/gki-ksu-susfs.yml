@@ -454,8 +454,6 @@ jobs:
               "bfusb.ko"
               
               # Dependencies (Crypto, LEDs, I2C)
-              "cmac.ko" 
-              "ccm.ko" 
               "ledtrig-netdev.ko" 
               "i2c-mux.ko"
               
