@@ -65,6 +65,8 @@ else
     echo "NetHunter stack being activated..."
     
     # Pre-load the master spines to heavily optimize the brute-force loop
+    insmod "$MODDIR/cfg80211.ko" >/dev/null 2>&1
+    insmod "$MODDIR/mac80211.ko" >/dev/null 2>&1
     insmod "$MODDIR/dvb_usb_v2.ko" >/dev/null 2>&1
     
     # Execute the forced dependency resolution loop

@@ -440,6 +440,10 @@ jobs:
 
           # 2. Define the target driver patterns
           MODULE_PATTERNS=(
+          # Core Wi-Fi
+              "cfg80211.ko" 
+              "mac80211.ko"
+              
               # Wi-Fi Adapters
               "mt76*.ko" 
               "ath*.ko" 
