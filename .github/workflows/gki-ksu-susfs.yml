@@ -438,15 +438,48 @@ jobs:
           SAFE_BUILD_NAME=$(echo "${{ inputs.build_name }}" | tr ' /' '_' | tr -s '_')
           echo "SAFE_BUILD_NAME=${SAFE_BUILD_NAME}" >> $GITHUB_ENV
 
-          # Define the target driver patterns
-          MODULE_PATTERNS=("cfg80211.ko" "mac80211.ko" "mt76*.ko" "usb_f_hid.ko" "bt*.ko" "bfusb.ko" "rtl*.ko" "ath*.ko" "dvb*.ko")
+          # 2. Define the target driver patterns
+          MODULE_PATTERNS=(
+              # Core Wi-Fi
+              "cfg80211.ko" 
+              "mac80211.ko" 
+              
+              # Wi-Fi Adapters
+              "mt76*.ko" 
+              "ath*.ko" 
+              "carl9170.ko"
+              
+              # Bluetooth
+              "bt*.ko" 
+              "bfusb.ko"
+              
+              # Dependencies (Crypto, LEDs, I2C)
+              "cmac.ko" 
+              "ccm.ko" 
+              "ledtrig-netdev.ko" 
+              "i2c-mux.ko"
+              
+              # The Entire SDR / DVB Suite
+              "*/media/dvb-frontends/*.ko"
+              "*/media/tuners/*.ko"
+              "*/media/usb/dvb-usb-v2/*.ko"
+              "dvb*.ko" 
+              "rtl*.ko"
+          )
 
-          # Find and copy them into the staging directory
+          # 3. Find and copy them into the staging directory
+          echo ">>> Searching for modules..."
           for pattern in "${MODULE_PATTERNS[@]}"; do
-            find . -name "$pattern" -type f -exec cp {} /tmp/kmod_staging/ \;
+            if [[ "$pattern" == *"/"* ]]; then
+              # Use -path to safely match directory strings
+              find . -path "$pattern" -type f -exec cp {} /tmp/kmod_staging/ \;
+            else
+              # Use -name for standard filenames
+              find . -name "$pattern" -type f -exec cp {} /tmp/kmod_staging/ \;
+            fi
           done
           
-          # FAIL-SAFE: Check if any .ko files were actually found
+          # 4. FAIL-SAFE: Check if any .ko files were actually found
           KO_COUNT=$(ls -1 /tmp/kmod_staging/*.ko 2>/dev/null | wc -l)
           if [ "$KO_COUNT" -eq 0 ]; then
             echo ">>> No NetHunter .ko files found. Skipping NetHunter Module creation."
@@ -454,15 +487,16 @@ jobs:
             exit 0
           fi
           
+          echo ">>> Successfully staged $KO_COUNT modules!"
           echo "HAS_NETHUNTER=true" >> $GITHUB_ENV
           
-          # Make sure the script is executable
+          # 5. Make sure the script is executable
           chmod +x scripts/build_nethunter_module.sh
           
-          # Execute custom builder script (Pass the SAFE name so module.prop is clean)
+          # 6. Execute custom builder script
           echo ">>> Executing build_nethunter_module.sh..."
           ./scripts/build_nethunter_module.sh "/tmp/kmod_staging" "$SAFE_BUILD_NAME"
-          
+
       - name: Upload NetHunter Module Artifact
         if: env.HAS_NETHUNTER == 'true'
         uses: actions/upload-artifact@v4
