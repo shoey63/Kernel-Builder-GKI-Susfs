@@ -2,12 +2,10 @@ diff --git a/modules.bzl b/modules.bzl
 index 52d92225a..d5a78fcbb 100644
 --- a/modules.bzl
 +++ b/modules.bzl
-@@ -8,6 +8,182 @@ This module contains a full list of kernel modules
+@@ -8,6 +8,180 @@ This module contains a full list of kernel modules
  
  _COMMON_GKI_MODULES_LIST = [
      # keep sorted
-+    "net/wireless/cfg80211.ko",
-+    "net/mac80211/mac80211.ko",
 +    "drivers/net/wireless/mediatek/mt76/mt76.ko",
 +    "drivers/net/wireless/mediatek/mt76/mt76-usb.ko",
 +    "drivers/net/wireless/mediatek/mt76/mt76x02-lib.ko",
