@@ -1,0 +1,47 @@
+diff --git a/drivers/net/wireless/mediatek/mt76/Kconfig b/drivers/net/wireless/mediatek/mt76/Kconfig
+index 7eb1b0b63..123ab9f11 100644
+--- a/drivers/net/wireless/mediatek/mt76/Kconfig
++++ b/drivers/net/wireless/mediatek/mt76/Kconfig
+@@ -1,6 +1,6 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ config MT76_CORE
+-	tristate
++	tristate "MediaTek MT76 core"
+ 	select PAGE_POOL
+ 
+ config MT76_LEDS
+@@ -10,7 +10,7 @@ config MT76_LEDS
+ 	default y
+ 
+ config MT76_USB
+-	tristate
++	tristate "MediaTek MT76 USB"
+ 	depends on MT76_CORE
+ 
+ config MT76_SDIO
+@@ -18,11 +18,11 @@ config MT76_SDIO
+ 	depends on MT76_CORE
+ 
+ config MT76x02_LIB
+-	tristate
++	tristate "MediaTek MT76x02 lib"
+ 	select MT76_CORE
+ 
+ config MT76x02_USB
+-	tristate
++	tristate "MediaTek MT76x02 USB"
+ 	select MT76_USB
+ 
+ config MT76_CONNAC_LIB
+diff --git a/drivers/net/wireless/mediatek/mt76/mt76x2/Kconfig b/drivers/net/wireless/mediatek/mt76/mt76x2/Kconfig
+index 482a32b70..920808dbb 100644
+--- a/drivers/net/wireless/mediatek/mt76/mt76x2/Kconfig
++++ b/drivers/net/wireless/mediatek/mt76/mt76x2/Kconfig
+@@ -1,6 +1,6 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ config MT76x2_COMMON
+-	tristate
++	tristate "MediaTek MT76x2 common"
+ 	select MT76x02_LIB
+ 
+ config MT76x2E

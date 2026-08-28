@@ -1,0 +1,22 @@
+diff --git a/drivers/usb/gadget/function/f_hid.c b/drivers/usb/gadget/function/f_hid.c
+index d8dafebea..db810af17 100644
+--- a/drivers/usb/gadget/function/f_hid.c
++++ b/drivers/usb/gadget/function/f_hid.c
+@@ -20,7 +20,7 @@
+ #include "u_f.h"
+ #include "u_hid.h"
+ 
+-#define HIDG_MINORS	4
++#define HIDG_MINORS	8
+ 
+ static int major, minors;
+ 
+@@ -1310,7 +1310,7 @@ static struct usb_function *hidg_alloc(struct usb_function_instance *fi)
+ 	hidg->func.free_func = hidg_free;
+ 
+ 	/* this could be made configurable at some point */
+-	hidg->qlen	   = 4;
++	hidg->qlen	   = 512;
+ 
+ 	return &hidg->func;
+ 
