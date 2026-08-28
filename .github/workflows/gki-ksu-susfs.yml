@@ -39,12 +39,6 @@ on:
         type: boolean
         default: true
         
-      enable_ksu:
-        description: "Integrate Root Manager only? (uncheck 'Integrate Root Manager and SUSFS')"
-        required: false
-        type: boolean
-        default: false
-        
       custom_kconfigs:
         description: "Inject custom Kconfigs (tools/custom.fragment)?"
         required: false
@@ -184,7 +178,7 @@ jobs:
 
 
       - name: Configure Build Channels
-        if: inputs.root_manager != 'Stock' && (inputs.enable_ksu_susfs == true || inputs.enable_ksu == true)
+        if: inputs.root_manager != 'Stock' && inputs.enable_ksu_susfs == true
         run: |
           echo "=== Configuring Build Channel: ${{ inputs.build_channel }} ==="
 
@@ -236,7 +230,7 @@ jobs:
           echo ">>> Captured Date: $(git log -1 --format=%ct)"
 
       - name: Integrate Root Manager (${{ inputs.root_manager }})
-        if: inputs.root_manager != 'Stock' && (inputs.enable_ksu_susfs == true || inputs.enable_ksu == true)
+        if: inputs.root_manager != 'Stock' && inputs.enable_ksu_susfs == true
         env:
           KSU_VARIANT_REPO_URL: ${{ env.KSU_VARIANT_REPO_URL }}
           KSU_VARIANT_REF: ${{ env.KSU_VARIANT_REF }}
@@ -507,14 +501,14 @@ jobs:
       # NEW: Compile custom Manager from source ONLY on 'test' channel
       # ---------------------------------------------------------
       - name: Setup Java for Custom Manager Build
-        if: (inputs.enable_ksu_susfs == true || inputs.enable_ksu == true) && inputs.build_channel == 'test' && inputs.root_manager == 'KernelSU-Next'
+        if: inputs.enable_ksu_susfs == true && inputs.build_channel == 'test' && inputs.root_manager == 'KernelSU-Next'
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '21'
 
       - name: Setup Rust & Cargo-NDK
-        if: (inputs.enable_ksu_susfs == true || inputs.enable_ksu == true) && inputs.build_channel == 'test' && inputs.root_manager == 'KernelSU-Next'
+        if: inputs.enable_ksu_susfs == true && inputs.build_channel == 'test' && inputs.root_manager == 'KernelSU-Next'
         run: |
           echo ">>> Setting up Rust targets for Android..."
           rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android
@@ -522,7 +516,7 @@ jobs:
           cargo install cargo-ndk
 
       - name: Build Custom Manager APK (Test Channel)
-        if: (inputs.enable_ksu_susfs == true || inputs.enable_ksu == true) && inputs.build_channel == 'test' && inputs.root_manager == 'KernelSU-Next'
+        if: inputs.enable_ksu_susfs == true && inputs.build_channel == 'test' && inputs.root_manager == 'KernelSU-Next'
         env:
           KSU_VARIANT_REPO_URL: ${{ env.KSU_VARIANT_REPO_URL }}
           KSU_VARIANT_REF: ${{ env.KSU_VARIANT_REF }}
@@ -563,7 +557,7 @@ jobs:
       # MODIFIED: Fetch upstream APK on 'dynamic' or 'stable', bypass on 'test'
       # ---------------------------------------------------------
       - name: Fetch Matching Manager APK
-        if: inputs.root_manager != 'Stock' && (inputs.enable_ksu_susfs == true || inputs.enable_ksu == true) && (inputs.build_channel != 'test' || inputs.root_manager != 'KernelSU-Next')
+        if: inputs.root_manager != 'Stock' && inputs.enable_ksu_susfs == true && (inputs.build_channel != 'test' || inputs.root_manager != 'KernelSU-Next')
         id: fetch_manager
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -581,7 +575,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload Manager APK
-        if: inputs.root_manager != 'Stock' && (inputs.enable_ksu_susfs == true || inputs.enable_ksu == true)
+        if: inputs.root_manager != 'Stock' && inputs.enable_ksu_susfs == true
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.root_manager }}-Manager
