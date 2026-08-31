@@ -434,29 +434,32 @@ jobs:
 
           # 2. Define the target driver patterns
           MODULE_PATTERNS=(
-          # Core Wi-Fi
-              "cfg80211.ko" 
+              # Core Wi-Fi
+              "cfg80211.ko"
               "mac80211.ko"
-              
+
               # Wi-Fi Adapters
-              "mt76*.ko" 
-              "ath*.ko" 
+              "mt76*.ko"
+              "ath*.ko"
               "carl9170.ko"
-              
+
               # Bluetooth
-              "bt*.ko" 
+              "bt*.ko"
               "bfusb.ko"
-              
-              # Dependencies (Crypto, LEDs, I2C)
-              "ledtrig-netdev.ko" 
+
+              # Dependencies (Crypto, I2C - ledtrig intentionally removed)
               "i2c-mux.ko"
-              
+
               # The Entire SDR / DVB Suite
               "*/media/dvb-frontends/*.ko"
               "*/media/tuners/*.ko"
               "*/media/usb/dvb-usb-v2/*.ko"
-              "dvb*.ko" 
+              "dvb*.ko"
               "rtl*.ko"
+
+              # Compiler Generated Load Order
+              "modules.order"
+              "modules.load"
           )
 
           # 3. Find and copy them into the staging directory
