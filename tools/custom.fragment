@@ -14,10 +14,10 @@ CONFIG_WIRELESS=y
 # ==========================================
 CONFIG_CFG80211=m
 CONFIG_MAC80211=m
-CONFIG_MAC80211_LEDS=y
+# CONFIG_MAC80211_LEDS is not set
 CONFIG_LEDS_CLASS=y
 CONFIG_LEDS_TRIGGERS=y
-CONFIG_LEDS_TRIGGER_NETDEV=m
+# CONFIG_LEDS_TRIGGER_NETDEV is not set
 
 # ==========================================
 # 3. MEDIATEK ALFA ADAPTER
@@ -29,7 +29,7 @@ CONFIG_MT76x02_LIB=m
 CONFIG_MT76x02_USB=m
 CONFIG_MT76x2_COMMON=m
 CONFIG_MT76x2U=m
-CONFIG_MT76_LEDS=y
+# CONFIG_MT76_LEDS is not set
 
 # ==========================================
 # 4. WIREGUARD & NETFILTER
