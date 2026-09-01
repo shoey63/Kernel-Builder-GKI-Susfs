@@ -1,83 +1,58 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Configuration: Toggle custom Kconfig integration via ENV (Defaults to false)
 WITH_CUSTOM=${WITH_CUSTOM:-false}
-
-# Define the source fragment relative to the script execution point
 FRAGMENT_SRC="$(pwd)/tools/custom.fragment"
+BASE_VER=${BASE_VER:-}
 
-echo "=== Configuring Kconfigs & Fragments ==="
+echo "=== Configuring Kconfigs & ABI Neutralization for Kernel $BASE_VER ==="
 
 cd kernel_workspace
 
-echo ">>> Neutralizing ABI protected exports lists..."
-for f in common/android/abi_gki_protected_exports*; do
-  [ -f "$f" ] && > "$f"
+# 1. NEUTRALIZE LEGACY ABI PROTECTED EXPORTS (modpost bypass for 5.10-6.6)
+for f in common/android/abi_gki_protected_exports* android/abi_gki_protected_exports*; do
+    [ -f "$f" ] && > "$f" || true
 done
 
+cd common
+
+# 2. NEUTRALIZE STRICT SYMBOL LISTS (modpost bypass for older Bazel)
+# Note: module trimming is handled globally via --notrim in build_kernel.sh
+case "$BASE_VER" in
+    5.15|6.1|6.6)
+        echo ">>> Disabling strict ABI mode in BUILD.bazel for $BASE_VER..."
+        sed -i -E 's/(["\x27]?kmi_symbol_list_strict_mode["\x27]?[[:space:]]*[:=][[:space:]]*)True/\1False/g' BUILD.bazel
+        ;;
+    *)
+        echo ">>> Kleaf >= 6.12 handles ABI bypass natively via CLI. Skipping strict mode sed."
+        ;;
+esac
+
+# 3. INTEGRATE CUSTOM KCONFIG FRAGMENT
 if [ "$WITH_CUSTOM" = "true" ]; then
     if [ ! -f "$FRAGMENT_SRC" ]; then
-        echo "[-] Error: Fragment file not found at $FRAGMENT_SRC"
+        echo "[-] Error: Fragment not found at $FRAGMENT_SRC"
         exit 1
     fi
 
-    echo ">>> Integrating Kconfig Configurations from $FRAGMENT_SRC..."
-    cd common
-
-    # ========================================================================
-    # MODERN BAZEL ECOSYSTEM (Kernel 6.1, 6.6, 6.12+)
-    # ========================================================================
-    if [ -f "BUILD.bazel" ]; then
-        echo ">>> Modern Bazel detected: Exposing fragment to Sandbox..."
-        cp "$FRAGMENT_SRC" custom_fragment
-
-        # --- KERNEL VERSION DETECTION & INJECTION ---
-        BASE_VER=$(echo "${MANIFEST_BRANCH:-}" | grep -oE '[0-9]+\.[0-9]+' | head -n 1)
-
-        if [[ "$BASE_VER" == "6.6" || "$BASE_VER" == "6.12" ]]; then
-            # ----------------------------------------------------
-            # KERNEL 6.6+ (Android 15+)
-            # ----------------------------------------------------
-            echo ">>> Detected 6.6+ Architecture. Applying native defconfig injection..."
-            
-            # Disable modern module trimming
-            sed -i 's/"trim_nonlisted_kmi": True,/"trim_nonlisted_kmi": False,/g' BUILD.bazel
-            
-            # Inject standard fragment array into the target config dictionary
-            sed -i '/"kernel_aarch64": {/a \        "defconfig_fragments": ["custom_fragment"],' BUILD.bazel
-
-        elif [[ "$BASE_VER" == "6.1" ]]; then
-            # ----------------------------------------------------
-            # KERNEL 6.1 (Android 14)
-            # ----------------------------------------------------
-            echo ">>> Detected 6.1 Architecture. Disabling Bazel strict mode..."
-            
-            # Force strict mode to False so custom modules pass validation
-            sed -i 's/"kmi_symbol_list_strict_mode": True,/"kmi_symbol_list_strict_mode": False,/g' BUILD.bazel
-            
-            # Inject fragment targeting into the Bazel build rules
+    case "$BASE_VER" in
+        5.10)
+            echo ">>> Injecting Legacy 5.10 Kconfig Fragment..."
+            cp "$FRAGMENT_SRC" arch/arm64/configs/custom_legacy.fragment
+            ;;
+        5.15|6.1)
+            echo ">>> Injecting Bazel 5.15 to 6.1 Kconfig Fragment..."
+            cp "$FRAGMENT_SRC" custom_fragment
             sed -i '/name = "kernel_aarch64",/a \    post_defconfig_fragments = ["custom_fragment"],' BUILD.bazel
-        else
-            # ----------------------------------------------------
-            # UNSUPPORTED MODERN BAZEL FAIL-SAFE
-            # ----------------------------------------------------
-            echo "[-] Error: Unsupported Bazel architecture version: $BASE_VER. Cannot safely inject fragments."
-            exit 1
-        fi
-
-    # ========================================================================
-    # LEGACY MAKE ECOSYSTEM (Kernel 5.10 and older)
-    # ========================================================================
-    else
-        echo ">>> Legacy Make detected (5.10 or older): Copying fragment..."
-        cp "$FRAGMENT_SRC" arch/arm64/configs/custom_legacy.fragment
-    fi
-
-    cd ..
-else
-    echo ">>> Skipping custom Kconfig configuration..."
+            ;;
+        *) 
+            # 6.6+
+            echo ">>> Injecting Bazel 6.6+ Kconfig Fragment..."
+            cp "$FRAGMENT_SRC" custom_fragment
+            sed -i '/"kernel_aarch64": {/a \        "defconfig_fragments": ["custom_fragment"],' BUILD.bazel
+            ;;
+    esac
 fi
 
-cd ..
-echo ">>> Kconfig configuration phase complete."
+cd ../..
+echo ">>> Configuration complete."

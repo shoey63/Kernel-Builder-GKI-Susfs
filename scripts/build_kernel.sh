@@ -27,25 +27,28 @@ if [ -f "tools/bazel" ]; then
       -- \
       --destdir=out/dist
 else
-
-    echo ">>> Legacy Hermetic Make ecosystem detected (5.10 or older)..."
+    echo ">>> Legacy Hermetic Make ecosystem detected (5.10 or fallback)..."
     
     mkdir -p out/dist
     
-    # 1. Export standard environment variables for legacy build.sh
+    # 1. Physically patch the hardcoded build configs so they cannot override our settings
+    echo ">>> Disabling strict mode and trimming in 5.10 build.config files..."
+    sed -i 's/KMI_SYMBOL_LIST_STRICT_MODE=1/KMI_SYMBOL_LIST_STRICT_MODE=0/g' common/build.config.* 2>/dev/null || true
+    sed -i 's/TRIM_NONLISTED_KMI=1/TRIM_NONLISTED_KMI=0/g' common/build.config.* 2>/dev/null || true
+    
+    # 2. Export standard environment variables for legacy build.sh
     export KERNEL_DIR="common"
     export BUILD_CONFIG="common/build.config.gki.aarch64"
     export SOURCE_DATE_EPOCH="$OFFICIAL_DATE"
     
     # Inject the fragment
     export EXTRA_DEFCONFIG_FRAGMENTS="custom_legacy.fragment"
-
     export DIST_DIR="out/dist"
     
     # Inject official hash and Make overrides
     export EXTRA_LINUX_VERSION="-g${OFFICIAL_HASH}"
     
-    # 2. Run the legacy orchestration script
+    # 3. Run the legacy orchestration script
     if [ -f "build/build.sh" ]; then
         echo "[+] Invoking build/build.sh..."
         bash build/build.sh
