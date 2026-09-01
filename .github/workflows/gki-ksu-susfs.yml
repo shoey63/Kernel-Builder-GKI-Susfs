@@ -440,21 +440,22 @@ jobs:
 
           # 2. Define the target driver patterns
           MODULE_PATTERNS=(
-              # Core Wi-Fi
+              # Core Subsystem Spines (Required for action.sh)
               "cfg80211.ko"
               "mac80211.ko"
+              "rfkill.ko"
+              "bluetooth.ko"
+              "libarc4.ko"
+              "i2c-mux.ko"
 
               # Wi-Fi Adapters
               "mt76*.ko"
               "ath*.ko"
               "carl9170.ko"
 
-              # Bluetooth
+              # Bluetooth Hardware
               "bt*.ko"
               "bfusb.ko"
-
-              # Dependencies (Crypto, I2C - ledtrig intentionally removed)
-              "i2c-mux.ko"
 
               # The Entire SDR / DVB Suite
               "*/media/dvb-frontends/*.ko"
@@ -462,10 +463,6 @@ jobs:
               "*/media/usb/dvb-usb-v2/*.ko"
               "dvb*.ko"
               "rtl*.ko"
-
-              # Compiler Generated Load Order
-              "modules.order"
-              "modules.load"
           )
 
           # 3. Find and copy them into the staging directory
@@ -479,7 +476,7 @@ jobs:
               find . -name "$pattern" -type f -exec cp {} /tmp/kmod_staging/ \;
             fi
           done
-          
+
           # 4. FAIL-SAFE: Check if any .ko files were actually found
           KO_COUNT=$(ls -1 /tmp/kmod_staging/*.ko 2>/dev/null | wc -l)
           if [ "$KO_COUNT" -eq 0 ]; then
