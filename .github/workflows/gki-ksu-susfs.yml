@@ -486,15 +486,15 @@ jobs:
               "rtl*.ko"
           )
 
-          # 3. Find and copy them into the staging directory
-          echo ">>> Searching for modules..."
+          # 3. Find and copy them EXCLUSIVELY from the compiled output directory
+          echo ">>> Searching for stripped modules in out/ ..."
           for pattern in "${MODULE_PATTERNS[@]}"; do
             if [[ "$pattern" == *"/"* ]]; then
               # Use -path to safely match directory strings
-              find . -path "$pattern" -type f -exec cp {} /tmp/kmod_staging/ \;
+              find out/ -path "$pattern" -type f -exec cp {} /tmp/kmod_staging/ \;
             else
               # Use -name for standard filenames
-              find . -name "$pattern" -type f -exec cp {} /tmp/kmod_staging/ \;
+              find out/ -name "$pattern" -type f -exec cp {} /tmp/kmod_staging/ \;
             fi
           done
 
@@ -516,12 +516,19 @@ jobs:
           echo ">>> Executing build_nethunter_module.sh..."
           ./scripts/build_nethunter_module.sh "/tmp/kmod_staging" "$SAFE_BUILD_NAME"
 
+          # 7. Manually structure the flashable zip to guarantee KSU compatibility
+          echo ">>> Packaging into flashable KernelSU Zip..."
+          cd ksu_nethunter_module
+          zip -r9 "../${SAFE_BUILD_NAME}-NetHunter-Module.zip" ./*
+          cd ..
+
       - name: Upload NetHunter Module Artifact
         if: env.HAS_NETHUNTER == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.SAFE_BUILD_NAME }}-NetHunter-Module
-          path: ksu_nethunter_module/
+          # Upload the manually compiled zip instead of trusting the artifact wrapper
+          path: ${{ env.SAFE_BUILD_NAME }}-NetHunter-Module.zip
           if-no-files-found: error
 
       # ---------------------------------------------------------
