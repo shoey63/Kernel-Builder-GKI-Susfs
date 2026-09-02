@@ -250,6 +250,14 @@ jobs:
               echo "[-] Sync failed with a 502/network drop. Retrying in 15 seconds..."
               sleep 15
           done
+
+          # Capture the PURE Google hash AND the official Unix timestamp
+          cd common
+          echo "OFFICIAL_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "OFFICIAL_DATE=$(git log -1 --format=%ct)" >> $GITHUB_ENV
+          echo ">>> Captured Hash: $(git rev-parse --short HEAD)"
+          echo ">>> Captured Date: $(git log -1 --format=%ct)"
+
       - name: Integrate Root Manager (${{ inputs.root_manager }})
         if: inputs.root_manager != 'Stock' && inputs.enable_ksu_susfs == true
         env:

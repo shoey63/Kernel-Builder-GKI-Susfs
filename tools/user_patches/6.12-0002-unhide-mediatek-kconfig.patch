@@ -1,0 +1,96 @@
+diff --git a/drivers/net/wireless/ath/ath9k/Kconfig b/drivers/net/wireless/ath/ath9k/Kconfig
+index 0c47be06c..8abca69ed 100644
+--- a/drivers/net/wireless/ath/ath9k/Kconfig
++++ b/drivers/net/wireless/ath/ath9k/Kconfig
+@@ -21,7 +21,6 @@ config ATH9K_BTCOEX_SUPPORT
+ config ATH9K
+ 	tristate "Atheros 802.11n wireless cards support"
+ 	depends on MAC80211 && HAS_DMA
+-	select MAC80211_LEDS if LEDS_CLASS=y || LEDS_CLASS=MAC80211
+ 	select ATH9K_HW
+ 	select ATH9K_COMMON
+ 	help
+@@ -172,7 +171,6 @@ config ATH9K_PCI_NO_EEPROM
+ config ATH9K_HTC
+ 	tristate "Atheros HTC based wireless cards support"
+ 	depends on USB && MAC80211
+-	select MAC80211_LEDS if LEDS_CLASS=y || LEDS_CLASS=MAC80211
+ 	select ATH9K_HW
+ 	select ATH9K_COMMON
+ 	help
+diff --git a/drivers/net/wireless/ath/carl9170/Kconfig b/drivers/net/wireless/ath/carl9170/Kconfig
+index ba9bea793..83aec059d 100644
+--- a/drivers/net/wireless/ath/carl9170/Kconfig
++++ b/drivers/net/wireless/ath/carl9170/Kconfig
+@@ -18,7 +18,6 @@ config CARL9170_LEDS
+ 	bool "SoftLED Support"
+ 	default y
+ 	depends on CARL9170
+-	depends on MAC80211_LEDS
+ 	help
+ 	  This option is necessary, if you want your device's LEDs to blink.
+ 
+diff --git a/drivers/net/wireless/mediatek/mt76/Kconfig b/drivers/net/wireless/mediatek/mt76/Kconfig
+index a86f800b8..f816b57ff 100644
+--- a/drivers/net/wireless/mediatek/mt76/Kconfig
++++ b/drivers/net/wireless/mediatek/mt76/Kconfig
+@@ -1,16 +1,16 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ config MT76_CORE
+-	tristate
++	tristate "MediaTek MT76 core"
+ 	select PAGE_POOL
+ 
+ config MT76_LEDS
+-	bool
++	bool "MediaTek MT76 LEDs"
+ 	depends on MT76_CORE
+ 	depends on LEDS_CLASS=y || MT76_CORE=LEDS_CLASS
+-	default y
++	
+ 
+ config MT76_USB
+-	tristate
++	tristate "MediaTek MT76 USB"
+ 	depends on MT76_CORE
+ 
+ config MT76_SDIO
+@@ -18,11 +18,11 @@ config MT76_SDIO
+ 	depends on MT76_CORE
+ 
+ config MT76x02_LIB
+-	tristate
++	tristate "MediaTek MT76x02 lib"
+ 	select MT76_CORE
+ 
+ config MT76x02_USB
+-	tristate
++	tristate "MediaTek MT76x02 USB"
+ 	select MT76_USB
+ 
+ config MT76_CONNAC_LIB
+diff --git a/drivers/net/wireless/mediatek/mt76/mt76x2/Kconfig b/drivers/net/wireless/mediatek/mt76/mt76x2/Kconfig
+index 482a32b70..920808dbb 100644
+--- a/drivers/net/wireless/mediatek/mt76/mt76x2/Kconfig
++++ b/drivers/net/wireless/mediatek/mt76/mt76x2/Kconfig
+@@ -1,6 +1,6 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ config MT76x2_COMMON
+-	tristate
++	tristate "MediaTek MT76x2 common"
+ 	select MT76x02_LIB
+ 
+ config MT76x2E
+diff --git a/scripts/kconfig/confdata.c b/scripts/kconfig/confdata.c
+index ac95661a1..9599a0408 100644
+--- a/scripts/kconfig/confdata.c
++++ b/scripts/kconfig/confdata.c
+@@ -77,7 +77,7 @@ static bool is_same(const char *file1, const char *file2)
+ 	if (map2 == MAP_FAILED)
+ 		goto close2;
+ 
+-	if (bcmp(map1, map2, st1.st_size))
++	if (memcmp(map1, map2, st1.st_size))
+ 		goto close2;
+ 
+ 	ret = true;

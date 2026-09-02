@@ -1,0 +1,22 @@
+diff --git a/drivers/usb/gadget/function/f_hid.c b/drivers/usb/gadget/function/f_hid.c
+index d1e1053cc..b7e2cec7d 100644
+--- a/drivers/usb/gadget/function/f_hid.c
++++ b/drivers/usb/gadget/function/f_hid.c
+@@ -22,7 +22,7 @@
+ 
+ #include "u_hid.h"
+ 
+-#define HIDG_MINORS	4
++#define HIDG_MINORS	8
+ 
+ /*
+  * Most operating systems seem to allow for 5000ms timeout, we will allow
+@@ -1586,7 +1586,7 @@ static struct usb_function *hidg_alloc(struct usb_function_instance *fi)
+ 	hidg->func.free_func = hidg_free;
+ 
+ 	/* this could be made configurable at some point */
+-	hidg->qlen	   = 4;
++	hidg->qlen	   = 512;
+ 
+ 	return &hidg->func;
+ 
