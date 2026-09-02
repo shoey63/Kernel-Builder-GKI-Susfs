@@ -13,11 +13,12 @@ echo ">>> Marking repo as clean (sanitizes all custom configuration & source mod
 git -C common ls-files -m | xargs -r git -C common update-index --assume-unchanged
 
 # Build method 
-if [ -f "tools/bazel" ]; then
-    echo ">>> Modern Kleaf/Bazel ecosystem detected..."
+if [ "$BASE_VER" != "5.10" ] && [ -f "tools/bazel" ]; then
+    echo ">>> Modern Kleaf/Bazel ecosystem detected for $BASE_VER..."
+    # Enforce standard sandboxing, disable trimming, and inject MAKEFLAGS dynamically
     
-    # Enforce standard sandboxing and inject MAKEFLAGS dynamically
     tools/bazel run --config=stamp \
+      --notrim \
       --action_env=SOURCE_DATE_EPOCH="$OFFICIAL_DATE" \
       --action_env=STABLE_BUILD_VERSION="-g$OFFICIAL_HASH" \
       --action_env=KLEAF_KERNEL_BUILD_VERSION="-g$OFFICIAL_HASH" \
