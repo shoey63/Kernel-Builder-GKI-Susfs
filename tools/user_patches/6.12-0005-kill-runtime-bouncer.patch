@@ -1,0 +1,13 @@
+diff --git a/kernel/module/version.c b/kernel/module/version.c
+index 3718a8868..df4a7e236 100644
+--- a/kernel/module/version.c
++++ b/kernel/module/version.c
+@@ -69,7 +69,7 @@ int check_version(const struct load_info *info,
+ 
+ bad_version:
+ 	pr_warn("%s: disagrees about version of symbol %s\n", info->name, symname);
+-	return 0;
++	return 1; /* KMI BYPASS */
+ }
+ 
+ int check_modstruct_version(const struct load_info *info,

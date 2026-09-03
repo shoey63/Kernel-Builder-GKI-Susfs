@@ -185,3 +185,19 @@ index 51b30732c..893c41378 100644
      "drivers/block/virtio_blk.ko",
      "drivers/block/zram/zram.ko",
      "drivers/bluetooth/btbcm.ko",
+@@ -104,7 +280,6 @@ _ARM64_GKI_MODULES_LIST = [
+     # keep sorted
+     "arch/arm64/crypto/aes-neon-blk.ko",
+     "arch/arm64/geniezone/gzvm.ko",
+-    "drivers/android/binder/rust_binder.ko",
+     "drivers/char/hw_random/cctrng.ko",
+     "drivers/misc/open-dice.ko",
+     "drivers/ptp/ptp_kvm.ko",
+@@ -124,7 +299,6 @@ _X86_GKI_MODULES_LIST = [
+ 
+ _X86_64_GKI_MODULES_LIST = [
+     # keep sorted
+-    "drivers/android/binder/rust_binder.ko",
+     "drivers/ptp/ptp_kvm.ko",
+ ]
+ 
