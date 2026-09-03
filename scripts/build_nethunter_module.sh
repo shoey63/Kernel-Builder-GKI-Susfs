@@ -65,28 +65,51 @@ if ip link show 2>/dev/null | grep -qE "(wlan1|wlan2|wlan3).*UP"; then
 else
     echo "NetHunter stack being activated..."
 
-    # 1. CORE SUBSYSTEM SPINES (Load bottom-level dependencies first)
-    insmod "$MODDIR/libarc4.ko" 2>/dev/null || true
+    # 1. CORE SUBSYSTEM SPINES 
     insmod "$MODDIR/bluetooth.ko" 2>/dev/null || true
     insmod "$MODDIR/btmtk.ko" 2>/dev/null || true
     insmod "$MODDIR/btbcm.ko" 2>/dev/null || true
     insmod "$MODDIR/btrtl.ko" 2>/dev/null || true
     insmod "$MODDIR/btintel.ko" 2>/dev/null || true
-    insmod "$MODDIR/rfkill.ko" 2>/dev/null || true
     insmod "$MODDIR/cfg80211.ko" 2>/dev/null || true
     insmod "$MODDIR/mac80211.ko" 2>/dev/null || true
     insmod "$MODDIR/dvb-core.ko" 2>/dev/null || true
     insmod "$MODDIR/dvb_usb_v2.ko" 2>/dev/null || true
     insmod "$MODDIR/i2c-mux.ko" 2>/dev/null || true
 
-    # 2. HARDWARE & ADAPTER DRIVERS (Now safe to load in one pass)
+    # 2. ATHEROS & MEDIATEK CHAINS (Explicit Priority)
+    # Atheros
+    insmod "$MODDIR/ath.ko" 2>/dev/null || true
+    insmod "$MODDIR/ath9k_hw.ko" 2>/dev/null || true
+    insmod "$MODDIR/ath9k_common.ko" 2>/dev/null || true
+    insmod "$MODDIR/ath9k_htc.ko" 2>/dev/null || true
+    insmod "$MODDIR/carl9170.ko" 2>/dev/null || true
+    
+    # MediaTek
+    insmod "$MODDIR/mt76.ko" 2>/dev/null || true
+    insmod "$MODDIR/mt76-usb.ko" 2>/dev/null || true
+    insmod "$MODDIR/mt76x02-lib.ko" 2>/dev/null || true
+    insmod "$MODDIR/mt76x02-usb.ko" 2>/dev/null || true
+    insmod "$MODDIR/mt76x2-common.ko" 2>/dev/null || true
+    insmod "$MODDIR/mt76x2u.ko" 2>/dev/null || true
+
+    # 3. SDR FRONTENDS & TUNERS 
+    # Load everything EXCEPT the USB bridges first to build the SDR foundations
     for ko in "$MODDIR"/*.ko; do
+        [[ "$ko" == *"usb"* ]] && continue
         [ -f "$ko" ] && insmod "$ko" 2>/dev/null || true
     done
 
-    # 3. HARDWARE BINDING
+    # 4. SDR USB BRIDGES
+    # Load these last so they can successfully hook into the frontends from Step 3
+    for ko in "$MODDIR"/*usb*.ko; do
+        [ -f "$ko" ] && insmod "$ko" 2>/dev/null || true
+    done
+
+    # 5. HARDWARE BINDING (With race-condition safeguard)
+    sleep 1
     echo "0e8d 7612" > /sys/bus/usb/drivers/mt76x2u/new_id 2>/dev/null || true
-    
+
     sleep 1
     ip link set wlan1 up 2>/dev/null
     ip link set wlan2 up 2>/dev/null

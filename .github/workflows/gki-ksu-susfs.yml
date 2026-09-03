@@ -487,15 +487,15 @@ jobs:
               "rtl*.ko"
           )
 
-          # 3. Find and copy them EXCLUSIVELY from the compiled output directory
-          echo ">>> Searching for stripped modules in out/ ..."
+          # 3. Find and copy them EXCLUSIVELY from the compiled Bazel output directory
+          echo ">>> Searching for stripped modules in kernel_workspace/out/dist/ ..."
           for pattern in "${MODULE_PATTERNS[@]}"; do
             if [[ "$pattern" == *"/"* ]]; then
               # Use -path to safely match directory strings
-              find out/ -path "$pattern" -type f -exec cp {} /tmp/kmod_staging/ \;
+              find kernel_workspace/out/dist/ -path "$pattern" -type f -exec cp {} /tmp/kmod_staging/ \;
             else
               # Use -name for standard filenames
-              find out/ -name "$pattern" -type f -exec cp {} /tmp/kmod_staging/ \;
+              find kernel_workspace/out/dist/ -name "$pattern" -type f -exec cp {} /tmp/kmod_staging/ \;
             fi
           done
 
