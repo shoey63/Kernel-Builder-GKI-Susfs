@@ -335,8 +335,7 @@ jobs:
         run: |
           PATCH_DIR="$(pwd)/tools/user_patches"
           
-          # Extract BASE_VER from target_version input (e.g., 6.1.145 -> 6.1)
-          BASE_VER=$(echo "${{ inputs.target_version }}" | grep -oE '[0-9]+\.[0-9]+' | head -n 1)
+          # BASE_VER is already provided by GITHUB_ENV from the Kconfigs step
           echo ">>> Target Base Version for patches: $BASE_VER"
 
           # Check if the directory exists and contains any .patch files
@@ -355,7 +354,7 @@ jobs:
                 
               # Condition 2: Patch starts with ANY version prefix (e.g., 6.6-0005.patch)
               elif [[ "$filename" =~ ^[0-9]+\.[0-9]+- ]]; then
-                echo "  -> [SKIP] Ignoring patch for different kernel version: $filename"
+                continue # Skip completely silently to keep the log clean
                 
               # Condition 3: Patch has no version prefix (e.g., 0007-generic.patch)
               else
@@ -363,13 +362,7 @@ jobs:
                 patch -p1 --no-backup-if-mismatch < "$patch_file"
               fi
             done
-
-            cd ../..
-            echo ">>> User patching complete."
-          else
-            echo ">>> No user patches found in tools/user_patches/. Proceeding with stock source."
           fi
-        shell: bash
 
       - name: Build common kernel Image
         env:
