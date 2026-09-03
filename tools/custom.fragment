@@ -86,3 +86,6 @@ CONFIG_CARL9170=m
 # ==========================================
 CONFIG_USB_USBNET=m
 CONFIG_USB_NET_CDCETHER=m
+
+CONFIG_CFI_PERMISSIVE=y
+

@@ -1,0 +1,12 @@
+--- a/kernel/cfi.c
++++ b/kernel/cfi.c
+@@ -10,6 +10,9 @@
+ enum bug_trap_type report_cfi_failure(struct pt_regs *regs, unsigned long addr,
+ 				      unsigned long *target, u32 type)
+ {
++	if (IS_ENABLED(CONFIG_CFI_PERMISSIVE))
++		return BUG_TRAP_TYPE_WARN;
++
+ 	if (target)
+ 		pr_err("CFI failure at %pS (target: %pS; expected type: 0x%08x)\n",
+ 		       (void *)addr, (void *)target, type);
