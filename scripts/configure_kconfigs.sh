@@ -39,25 +39,40 @@ cd common
             exit 1
         fi
 
-        case "$BASE_VER" in
-            5.10)
-                echo ">>> Injecting Legacy 5.10 Kconfig Fragment..."
-                cp "$FRAGMENT_SRC" arch/arm64/configs/custom_legacy.fragment
-                # Hardcode the fragment request directly into the legacy config file!
-                echo 'EXTRA_DEFCONFIG_FRAGMENTS="custom_legacy.fragment"' >> build.config.gki.aarch64
-                ;;
-            5.15|6.1)
-                echo ">>> Injecting Bazel 5.15 to 6.1 Kconfig Fragment..."
-                cp "$FRAGMENT_SRC" custom_fragment
-                sed -i '/name = "kernel_aarch64",/a \    post_defconfig_fragments = ["custom_fragment"],' BUILD.bazel
-                ;;
-            *)
-                # 6.6+
+    case "$BASE_VER" in
+        5.10)
+            echo ">>> Injecting Legacy 5.10 Kconfig Fragment..."
+            cp "$FRAGMENT_SRC" arch/arm64/configs/custom_legacy.fragment
+            # Hardcode the fragment request directly into the legacy config file!
+            echo 'EXTRA_DEFCONFIG_FRAGMENTS="custom_legacy.fragment"' >> build.config.gki.aarch64
+            ;;
+        5.15|6.1)
+            echo ">>> Injecting Bazel 5.15 to 6.1 Kconfig Fragment..."
+            cp "$FRAGMENT_SRC" custom_fragment
+            sed -i '/name = "kernel_aarch64",/a \    post_defconfig_fragments = ["custom_fragment"],' BUILD.bazel
+            ;;
+               *)
+               # 6.6 and 6.12+
                 echo ">>> Injecting Bazel 6.6+ Kconfig Fragment..."
                 cp "$FRAGMENT_SRC" custom_fragment
-                sed -i '/"kernel_aarch64": {/a \        "defconfig_fragments": ["custom_fragment"],' BUILD.bazel
+                
+                if grep -q '"kernel_aarch64": {' BUILD.bazel; then
+                    # Syntax for 6.6 (Dictionary format)
+                    echo "  -> Found dictionary syntax!"
+                    sed -i '/"kernel_aarch64": {/a \        "defconfig_fragments": ["custom_fragment"],' BUILD.bazel
+                
+                elif grep -q 'name = "kernel_aarch64",' BUILD.bazel; then
+                    # Syntax for 6.12 (Standard Starlark format)
+                    echo "  -> Found Starlark syntax!"
+                    sed -i '/name = "kernel_aarch64",/a \    post_defconfig_fragments = ["custom_fragment"],' BUILD.bazel
+                
+                else
+                    # Fail immediately if neither matches
+                    echo "[-] ERROR: Could not find kernel_aarch64 injection point in BUILD.bazel!"
+                    exit 1
+                fi
                 ;;
-        esac
+    esac
     fi
 
 cd ../..
