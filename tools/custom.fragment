@@ -1,44 +1,35 @@
-CONFIG_I2C=y
-CONFIG_USB_SUPPORT=y
-CONFIG_USB=y
-CONFIG_USB_NET_DRIVERS=m
-CONFIG_WLAN=y
+# ==========================================
+# 0. CORE WIRELESS STACK
+# ==========================================
 CONFIG_WIRELESS=y
-
-# ==========================================
-# 2. CORE WIRELESS & LED TRIGGERS
-# ==========================================
 CONFIG_CFG80211=m
 CONFIG_MAC80211=m
-# CONFIG_MAC80211_LEDS is not set
-CONFIG_LEDS_CLASS=y
-CONFIG_LEDS_TRIGGERS=y
-# CONFIG_LEDS_TRIGGER_NETDEV is not set
 
 # ==========================================
-# 3. MEDIATEK ALFA ADAPTER
+# 1. VENDOR GATEKEEPERS (DOORS OPEN)
 # ==========================================
 CONFIG_WLAN_VENDOR_MEDIATEK=y
+CONFIG_WLAN_VENDOR_ATH=y
+CONFIG_MEDIA_USB_SUPPORT=y
+CONFIG_MEDIA_DIGITAL_TV_SUPPORT=y
+CONFIG_MEDIA_SDR_SUPPORT=y
+
+# ==========================================
+# 2. MEDIATEK ALFA MODULES
+# ==========================================
 CONFIG_MT76_CORE=m
 CONFIG_MT76_USB=m
 CONFIG_MT76x02_LIB=m
 CONFIG_MT76x02_USB=m
 CONFIG_MT76x2_COMMON=m
 CONFIG_MT76x2U=m
-# CONFIG_MT76_LEDS is not set
 
-# Atheros & SDR Master Switches
-CONFIG_WLAN_VENDOR_ATH=y
-CONFIG_MEDIA_SUPPORT=y
-CONFIG_MEDIA_USB_SUPPORT=y
-CONFIG_MEDIA_DIGITAL_TV_SUPPORT=y
-CONFIG_MEDIA_SDR_SUPPORT=y
+# ==========================================
+# 3. ATHEROS, BLUETOOTH & SDR MODULES
+# ==========================================
 CONFIG_I2C_MUX=m
-
-# Explicitly request the final missing modules
 CONFIG_ATH9K_HTC=m
 CONFIG_CARL9170=m
 CONFIG_BT_HCIBFUSB=m
 CONFIG_DVB_USB_V2=m
 CONFIG_DVB_USB_RTL28XXU=m
-
