@@ -219,45 +219,16 @@ jobs:
         run: |
           set -euo pipefail
           rm -rf kernel_workspace && mkdir -p kernel_workspace && cd kernel_workspace
-          
-          # 1. Network tweaks for stability
-          git config --global http.version HTTP/1.1
-          git config --global http.postBuffer 524288000
-          git config --global http.lowSpeedLimit 1000
-          git config --global http.lowSpeedTime 30
-          
           repo init -u "$MANIFEST_URL" -b "$MANIFEST_BRANCH" --depth=1
+          repo sync -c --no-tags --no-clone-bundle --current-branch --fail-fast -j$(nproc)
           
-          # 2. Hard Retry Loop: Brute-force through Google's 502 server drops
-          for i in 1 2 3 4 5; do
-              echo ">>> Sync attempt $i..."
-              # Temporarily disable set -e just for the sync command so a 502 doesn't instantly kill the workflow
-              set +e 
-              repo sync -c --no-tags --no-clone-bundle --current-branch --force-sync -j$(nproc)
-              SYNC_STATUS=$?
-              set -e
-              
-              if [ $SYNC_STATUS -eq 0 ]; then
-                  echo ">>> Sync successful!"
-                  break
-              fi
-              
-              if [ $i -eq 5 ]; then
-                  echo "[-] Sync failed 5 times. Google's servers are completely down."
-                  exit 1
-              fi
-              
-              echo "[-] Sync failed with a 502/network drop. Retrying in 15 seconds..."
-              sleep 15
-          done
-
           # Capture the PURE Google hash AND the official Unix timestamp
           cd common
           echo "OFFICIAL_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
           echo "OFFICIAL_DATE=$(git log -1 --format=%ct)" >> $GITHUB_ENV
           echo ">>> Captured Hash: $(git rev-parse --short HEAD)"
           echo ">>> Captured Date: $(git log -1 --format=%ct)"
-
+          
       - name: Integrate Root Manager (${{ inputs.root_manager }})
         if: inputs.root_manager != 'Stock' && inputs.enable_ksu_susfs == true
         env:

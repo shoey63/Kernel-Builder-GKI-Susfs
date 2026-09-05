@@ -2,11 +2,10 @@ diff --git a/modules.bzl b/modules.bzl
 index 51b30732c..31c2df5ab 100644
 --- a/modules.bzl
 +++ b/modules.bzl
-@@ -8,6 +8,182 @@ This module contains a full list of kernel modules
+@@ -8,6 +8,177 @@ This module contains a full list of kernel modules
  
  _COMMON_GKI_MODULES_LIST = [
      # keep sorted
-+    "drivers/media/dvb-core/dvb-core.ko",
 +    "net/mac80211/mac80211.ko",
 +    "net/wireless/cfg80211.ko",
 +    "drivers/net/wireless/mediatek/mt76/mt76.ko",
@@ -20,9 +19,6 @@ index 51b30732c..31c2df5ab 100644
 +    "drivers/net/wireless/ath/ath9k/ath9k_htc.ko",
 +    "drivers/net/wireless/ath/ath9k/ath9k_hw.ko",
 +    "drivers/bluetooth/bfusb.ko",
-+    "drivers/bluetooth/btintel.ko",
-+    "drivers/bluetooth/btrtl.ko",
-+    "drivers/bluetooth/btusb.ko",
 +    "drivers/net/wireless/ath/carl9170/carl9170.ko",
 +    "drivers/media/dvb-frontends/dib8000.ko",
 +    "drivers/media/dvb-frontends/dvb-pll.ko",
@@ -117,7 +113,6 @@ index 51b30732c..31c2df5ab 100644
 +    "drivers/media/tuners/tda18271.ko",
 +    "drivers/media/dvb-frontends/tda8261.ko",
 +    "drivers/media/dvb-frontends/isl6423.ko",
-+    "drivers/bluetooth/btmtk.ko",
 +    "drivers/media/dvb-frontends/ascot2e.ko",
 +    "drivers/media/dvb-frontends/nxt200x.ko",
 +    "drivers/media/dvb-frontends/cx22702.ko",
@@ -185,19 +180,3 @@ index 51b30732c..31c2df5ab 100644
      "drivers/block/virtio_blk.ko",
      "drivers/block/zram/zram.ko",
      "drivers/bluetooth/btbcm.ko",
-@@ -104,7 +280,6 @@ _ARM64_GKI_MODULES_LIST = [
-     # keep sorted
-     "arch/arm64/crypto/aes-neon-blk.ko",
-     "arch/arm64/geniezone/gzvm.ko",
--    "drivers/android/binder/rust_binder.ko",
-     "drivers/char/hw_random/cctrng.ko",
-     "drivers/misc/open-dice.ko",
-     "drivers/ptp/ptp_kvm.ko",
-@@ -124,7 +299,6 @@ _X86_GKI_MODULES_LIST = [
- 
- _X86_64_GKI_MODULES_LIST = [
-     # keep sorted
--    "drivers/android/binder/rust_binder.ko",
-     "drivers/ptp/ptp_kvm.ko",
- ]
- 
