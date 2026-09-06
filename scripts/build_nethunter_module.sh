@@ -55,11 +55,13 @@ cat << 'EOF' > "$MODULE_DIR/action.sh"
 #!/system/bin/sh
 MODDIR=${0%/*}
 
-if ip link show 2>/dev/null | grep -qE "(wlan1|wlan2|wlan3).*UP"; then
+if ip link show 2>/dev/null | grep -qE "(wlan1|wlan2|wlan3|eth0|eth1|usb0).*UP"; then
     echo "NetHunter stack being de-activated..."
     ip link set wlan1 down 2>/dev/null
     ip link set wlan2 down 2>/dev/null
     ip link set wlan3 down 2>/dev/null
+    ip link set eth0 down 2>/dev/null
+    ip link set usb0 down 2>/dev/null
     sleep 1
     echo "[SUCCESS!] Interfaces dropped. Modules kept in memory to prevent kernel panic."
 else
@@ -93,20 +95,28 @@ else
     insmod "$MODDIR/mt76x2-common.ko" 2>/dev/null || true
     insmod "$MODDIR/mt76x2u.ko" 2>/dev/null || true
 
-    # 3. SDR FRONTENDS & TUNERS 
+    # 3. USB ETHERNET ADAPTERS (Wired Sniffing)
+    insmod "$MODDIR/usbnet.ko" 2>/dev/null || true
+    insmod "$MODDIR/cdc_ether.ko" 2>/dev/null || true
+    insmod "$MODDIR/rndis_host.ko" 2>/dev/null || true
+    insmod "$MODDIR/ax88179_178a.ko" 2>/dev/null || true
+    insmod "$MODDIR/asix.ko" 2>/dev/null || true
+    insmod "$MODDIR/r8152.ko" 2>/dev/null || true
+
+    # 4. SDR FRONTENDS & TUNERS 
     # Load everything EXCEPT the USB bridges first to build the SDR foundations
     for ko in "$MODDIR"/*.ko; do
         [[ "$ko" == *"usb"* ]] && continue
         [ -f "$ko" ] && insmod "$ko" 2>/dev/null || true
     done
 
-    # 4. SDR USB BRIDGES
-    # Load these last so they can successfully hook into the frontends from Step 3
+    # 5. SDR USB BRIDGES
+    # Load these last so they can successfully hook into the frontends from Step 4
     for ko in "$MODDIR"/*usb*.ko; do
         [ -f "$ko" ] && insmod "$ko" 2>/dev/null || true
     done
 
-    # 5. HARDWARE BINDING (With race-condition safeguard)
+    # 6. HARDWARE BINDING (With race-condition safeguard)
     sleep 1
     echo "0e8d 7612" > /sys/bus/usb/drivers/mt76x2u/new_id 2>/dev/null || true
 
@@ -114,6 +124,8 @@ else
     ip link set wlan1 up 2>/dev/null
     ip link set wlan2 up 2>/dev/null
     ip link set wlan3 up 2>/dev/null
+    ip link set eth0 up 2>/dev/null
+    ip link set usb0 up 2>/dev/null
     echo "[SUCCESS!] Stack armed."
 fi
 EOF

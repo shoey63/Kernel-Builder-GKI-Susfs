@@ -472,6 +472,14 @@ jobs:
               "*/media/usb/dvb-usb-v2/*.ko"
               "dvb*.ko"
               "rtl*.ko"
+              
+              # USB Ethernet Adapters (Wired Sniffing)
+              "usbnet.ko"
+              "cdc_ether.ko"
+              "rndis_host.ko"
+              "ax88179_178a.ko"
+              "asix.ko"
+              "r8152.ko"
           )
 
           # 3. Find and copy them EXCLUSIVELY from the compiled Bazel output directory
