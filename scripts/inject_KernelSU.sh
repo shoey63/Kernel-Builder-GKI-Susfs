@@ -8,31 +8,24 @@ if [ "${USE_DYNAMIC_TRANSPLANT}" == "true" ]; then
     git clone https://github.com/tiann/KernelSU.git "${MANAGER_DIR}"
     
     ln -sfn "../${MANAGER_DIR}" "common/${MANAGER_DIR}"
-    
-    echo ">>> 2. Running official setup script (this will auto-update to main)..."
     cd common
     bash "${MANAGER_DIR}/kernel/setup.sh" main
     cd ..
     
-    echo ">>> 3. Pinning KernelSU to SuSFS-compatible commit..."
     cd "${MANAGER_DIR}"
-    # Override the setup.sh auto-updater and force the rollback
-    git reset --hard b3bb394273b31701c54ce041149acd8c9d4092d4
-    
-    # Calculate hashes strictly from the pinned state, filtering out CI translation skips
     UPSTREAM_HASH=$(git log -n 1 --format="%H" -i --grep="ci skip" --grep="skip ci" --invert-grep -- . ":!website/" ":!docs/" ":!*.md" ":!.github/")
     CALCULATED_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
     CALCULATED_COUNT=$(git rev-list --count "${UPSTREAM_HASH}")
     UPSTREAM_BRANCH="main"
 
-    echo ">>> 4. Fetching Simonpunk's 6.6-dev 10_enable_susfs_for_ksu patch..."
+    echo ">>> 2. Fetching Simonpunk's 6.6-dev 10_enable_susfs_for_ksu patch..."
     PATCH_URL="https://gitlab.com/simonpunk/susfs4ksu/-/raw/gki-android15-6.6-dev/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch"
 
     if wget -qO 10_enable_susfs_for_ksu.patch "$PATCH_URL"; then
-        echo ">>> 5. Applying SuSFS patch dynamically..."
+        echo ">>> 3. Applying SuSFS patch dynamically..."
         patch -p1 < 10_enable_susfs_for_ksu.patch || exit 1
         
-        echo ">>> 6. Injecting SuSFS Macros & Compiler Overrides into Kbuild..."
+        echo ">>> 4. Injecting SuSFS Macros & Compiler Overrides into Kbuild..."
         cat << 'EOF' >> kernel/Kbuild
 
 # --- Force SuSFS Macros and Compiler Overrides ---
@@ -54,7 +47,6 @@ EOF
         exit 1
     fi
     cd ..  
-
 else
     echo ">>> Safe fallback channel detected. Cloning custom pipeline branch..."
     git clone -b "${KSU_VARIANT_REF}" "${KSU_VARIANT_REPO_URL}" "${MANAGER_DIR}"
