@@ -480,6 +480,21 @@ jobs:
               "ax88179_178a.ko"
               "asix.ko"
               "r8152.ko"
+              
+              # USB Serial & CARsenal              
+              "usbserial.ko"
+              "cp210x.ko"
+              "ftdi_sio.ko"
+              "pl2303.ko"
+              "ch341.ko"
+              "can.ko"
+              "can-dev.ko"
+              "can-raw.ko"
+              "can-bcm.ko"
+              "can-gw.ko"
+              "vcan.ko"
+              "slcan.ko"
+              "gs_usb.ko"
           )
 
           # 3. Find and copy them EXCLUSIVELY from the compiled Bazel output directory

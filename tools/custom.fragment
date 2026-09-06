@@ -48,7 +48,24 @@ CONFIG_USB_RTL8152=m
 # ==========================================
 # 5. SYSTEM V IPC (METASPLOIT / POSTGRESQL)
 # ==========================================
-CONFIG_SYSVIPC=y
-CONFIG_SYSVIPC_SYSCTL=y
-CONFIG_POSIX_MQUEUE=y
 
+# ==========================================
+# 5. USB SERIAL
+# ==========================================
+CONFIG_USB_SERIAL=m
+CONFIG_USB_SERIAL_CP210X=m
+CONFIG_USB_SERIAL_FTDI_SIO=m
+CONFIG_USB_SERIAL_PL2303=m
+CONFIG_USB_SERIAL_CH341=m
+
+# ==========================================
+# 6. CARSENAL
+# ==========================================
+CONFIG_CAN=m
+CONFIG_CAN_RAW=m
+CONFIG_CAN_BCM=m
+CONFIG_CAN_GW=m
+CONFIG_CAN_DEV=m
+CONFIG_CAN_VCAN=m
+CONFIG_CAN_SLCAN=m
+CONFIG_CAN_GS_USB=m
