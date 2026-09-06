@@ -44,3 +44,11 @@ CONFIG_USB_NET_CDCETHER=m
 CONFIG_USB_NET_RNDIS_HOST=m
 CONFIG_USB_RTL8150=m
 CONFIG_USB_RTL8152=m
+
+# ==========================================
+# 5. SYSTEM V IPC (METASPLOIT / POSTGRESQL)
+# ==========================================
+CONFIG_SYSVIPC=y
+CONFIG_SYSVIPC_SYSCTL=y
+CONFIG_POSIX_MQUEUE=y
+
