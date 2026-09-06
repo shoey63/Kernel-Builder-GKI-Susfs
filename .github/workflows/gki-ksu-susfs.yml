@@ -220,8 +220,24 @@ jobs:
           set -euo pipefail
           rm -rf kernel_workspace && mkdir -p kernel_workspace && cd kernel_workspace
           repo init -u "$MANIFEST_URL" -b "$MANIFEST_BRANCH" --depth=1
-          repo sync -c --no-tags --no-clone-bundle --current-branch --fail-fast -j$(nproc)
           
+          MAX_RETRIES=3
+          for i in $(seq 1 $MAX_RETRIES); do
+            echo ">>> Running repo sync (Attempt $i of $MAX_RETRIES)..."
+            
+            if repo sync -c --no-tags --no-clone-bundle --current-branch -j$(nproc); then
+              echo ">>> Repo sync successful!"
+              break
+            else
+              if [ $i -eq $MAX_RETRIES ]; then
+                echo ">>> Repo sync completely failed after $MAX_RETRIES attempts. Aborting."
+                exit 1
+              fi
+              echo ">>> Sync connection dropped. Waiting 15 seconds before retrying..."
+              sleep 15
+            fi
+          done
+
           # Capture the PURE Google hash AND the official Unix timestamp
           cd common
           echo "OFFICIAL_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
