@@ -2,12 +2,16 @@ diff --git a/modules.bzl b/modules.bzl
 index 51b30732c..31c2df5ab 100644
 --- a/modules.bzl
 +++ b/modules.bzl
-@@ -8,6 +8,182 @@ This module contains a full list of kernel modules
+@@ -8,6 +8,193 @@ This module contains a full list of kernel modules
  
  _COMMON_GKI_MODULES_LIST = [
      # keep sorted
 +    "drivers/i2c/i2c-mux.ko",     
 +    "drivers/bluetooth/bfusb.ko",
++    "drivers/bluetooth/btrtl.ko",
++    "drivers/bluetooth/btmtk.ko",
++    "drivers/bluetooth/btusb.ko",
++    "drivers/bluetooth/btintel.ko",
 +    "drivers/media/dvb-frontends/dib8000.ko",
 +    "drivers/media/dvb-frontends/dvb-pll.ko",
 +    "drivers/media/dvb-frontends/atbm8830.ko",
@@ -164,6 +168,7 @@ index 51b30732c..31c2df5ab 100644
 +    "drivers/media/tuners/mt2131.ko",
 +    "drivers/media/tuners/r820t.ko",
 +    "drivers/media/dvb-frontends/itd1000.ko",
++    "drivers/misc/eeprom/eeprom_93cx6.ko",
 +    "drivers/net/can/usb/gs_usb.ko",
 +    "drivers/net/usb/rndis_host.ko",
 +    "drivers/net/wireless/mediatek/mt76/mt76.ko",
@@ -177,6 +182,12 @@ index 51b30732c..31c2df5ab 100644
 +    "drivers/net/wireless/ath/ath9k/ath9k_htc.ko",
 +    "drivers/net/wireless/ath/ath9k/ath9k_hw.ko",
 +    "drivers/net/wireless/ath/carl9170/carl9170.ko",
++    "drivers/net/wireless/realtek/rtl818x/rtl8187/rtl8187.ko",
++    "drivers/net/wireless/ralink/rt2x00/rt2800usb.ko",
++    "drivers/net/wireless/ralink/rt2x00/rt2800lib.ko",
++    "drivers/net/wireless/realtek/rtl8xxxu/rtl8xxxu.ko",
++    "drivers/net/wireless/ralink/rt2x00/rt2x00usb.ko",
++    "drivers/net/wireless/ralink/rt2x00/rt2x00lib.ko",
 +    "drivers/usb/serial/pl2303.ko",
 +    "drivers/usb/serial/cp210x.ko",
 +    "drivers/usb/serial/ch341.ko",

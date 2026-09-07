@@ -495,6 +495,13 @@ jobs:
               "vcan.ko"
               "slcan.ko"
               "gs_usb.ko"
+              
+              # Bluetooth & Legacy Wi-Fi
+              "btusb.ko"
+              "rt2*.ko"
+              "eeprom_93cx6.ko"
+              "rtl8187.ko"
+              "rtl8xxxu.ko"
           )
 
           # 3. Find and copy them EXCLUSIVELY from the compiled Bazel output directory
