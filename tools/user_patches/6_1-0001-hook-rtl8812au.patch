@@ -15,5 +15,5 @@
  # SPDX-License-Identifier: GPL-2.0
 +
 +# --- NETHUNTER REALTEK AMALGAMATED HOOK ---
-+obj-$(CONFIG_88XXAU) += rtl8812au/
+obj-y += rtl8812au/
  #

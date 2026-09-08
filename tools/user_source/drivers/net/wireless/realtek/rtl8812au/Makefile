@@ -1720,7 +1720,7 @@ $(MODULE_NAME)-y += $(_PLATFORM_FILES)
 
 $(MODULE_NAME)-$(CONFIG_MP_INCLUDED) += core/rtw_mp.o
 
-obj-$(CONFIG_88XXAU) := $(MODULE_NAME).o
+obj-m := $(MODULE_NAME).o
 
 else
 
