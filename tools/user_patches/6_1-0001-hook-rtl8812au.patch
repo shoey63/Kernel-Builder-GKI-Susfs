@@ -1,3 +1,5 @@
+--- a/drivers/net/wireless/realtek/Makefile
++++ b/drivers/net/wireless/realtek/Makefile
 @@ -1,2 +1,5 @@
  # SPDX-License-Identifier: GPL-2.0
 +
