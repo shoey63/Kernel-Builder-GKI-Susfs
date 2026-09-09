@@ -19,24 +19,10 @@ cd common
     # 2. NEUTRALIZE STRICT SYMBOL LISTS & TRIMMING (ABI Bouncer Bypass)
     case "$BASE_VER" in
         5.10)
-            echo ">>> Disabling strict ABI mode & trimming in legacy build.config for $BASE_VER..."
-            sed -i 's/KMI_SYMBOL_LIST_STRICT_MODE=1/KMI_SYMBOL_LIST_STRICT_MODE=0/g' build.config.* 2>/dev/null || true
-            sed -i 's/TRIM_NONLISTED_KMI=1/TRIM_NONLISTED_KMI=0/g' build.config.* 2>/dev/null || true
+            echo ">>> Maintaining stock ABI/KMI strictness for $BASE_VER..."
+            # Aggressive KMI and TRIM bypasses removed to prevent Android 12 vendor bootloops
             ;;
-        5.15)
-            echo ">>> Disabling strict ABI mode & trimming in legacy configs and BUILD.bazel for 5.15..."
-            
-            # 1. Legacy Trimming/ABI Bypass
-            sed -i 's/KMI_SYMBOL_LIST_STRICT_MODE=1/KMI_SYMBOL_LIST_STRICT_MODE=0/g' build.config.* 2>/dev/null || true
-            sed -i 's/TRIM_NONLISTED_KMI=1/TRIM_NONLISTED_KMI=0/g' build.config.* 2>/dev/null || true
-            
-            # 2. Bazel Strict Mode Override
-            sed -i -E 's/(["\x27]?kmi_symbol_list_strict_mode["\x27]?[[:space:]]*[:=][[:space:]]*)True/\1False/g' BUILD.bazel 2>/dev/null || true
-            
-            # 3. Bazel Trimming Override (Dictionary injection)
-            sed -i '/"kernel_aarch64": {/a \        "trim_nonlisted_kmi": False,' BUILD.bazel
-            ;;
-        6.1|6.6|6.12)
+        5.15|6.1|6.6|6.12)
             echo ">>> Disabling strict ABI mode in BUILD.bazel for $BASE_VER..."
             sed -i -E 's/(["\x27]?kmi_symbol_list_strict_mode["\x27]?[[:space:]]*[:=][[:space:]]*)True/\1False/g' BUILD.bazel 2>/dev/null || true
             ;;

@@ -1,5 +1,5 @@
 diff --git a/net/ipv4/Kconfig b/net/ipv4/Kconfig
-index 2dfb12230..a9eb7c85d 100644
+index 2dfb12230..75a3391b9 100644
 --- a/net/ipv4/Kconfig
 +++ b/net/ipv4/Kconfig
 @@ -468,6 +468,7 @@ config INET_DIAG_DESTROY
@@ -46,3 +46,12 @@ index 2dfb12230..a9eb7c85d 100644
  	help
  
  	  BBR (Bottleneck Bandwidth and RTT) TCP congestion control aims to
+@@ -680,7 +681,7 @@ config TCP_CONG_BBR
+ 
+ choice
+ 	prompt "Default TCP congestion control"
+-	default DEFAULT_CUBIC
++	default DEFAULT_BBR
+ 	help
+ 	  Select the TCP congestion control that will be used by default
+ 	  for all connections.
