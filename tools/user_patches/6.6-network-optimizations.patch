@@ -1,0 +1,103 @@
+diff --git a/arch/arm64/configs/gki_defconfig b/arch/arm64/configs/gki_defconfig
+index 3a13197d5..9b9311242 100644
+--- a/arch/arm64/configs/gki_defconfig
++++ b/arch/arm64/configs/gki_defconfig
+@@ -157,11 +156,6 @@ CONFIG_NET_IPVTI=y
+ CONFIG_INET_ESP=y
+ CONFIG_INET_UDP_DIAG=y
+ CONFIG_INET_DIAG_DESTROY=y
+-CONFIG_TCP_CONG_ADVANCED=y
+-# CONFIG_TCP_CONG_BIC is not set
+-# CONFIG_TCP_CONG_WESTWOOD is not set
+-# CONFIG_TCP_CONG_HTCP is not set
+-CONFIG_TCP_CONG_BBR=y
+ CONFIG_IPV6_ROUTER_PREF=y
+ CONFIG_IPV6_ROUTE_INFO=y
+ CONFIG_IPV6_OPTIMISTIC_DAD=y
+@@ -269,6 +263,7 @@ CONFIG_NET_SCH_TBF=y
+ CONFIG_NET_SCH_NETEM=y
+ CONFIG_NET_SCH_CODEL=y
+ CONFIG_NET_SCH_FQ_CODEL=y
++CONFIG_NET_SCH_CAKE=y
+ CONFIG_NET_SCH_FQ=y
+ CONFIG_NET_SCH_INGRESS=y
+ CONFIG_NET_CLS_BASIC=y
+diff --git a/net/ipv4/Kconfig b/net/ipv4/Kconfig
+index 2dfb12230..5fce2b1c8 100644
+--- a/net/ipv4/Kconfig
++++ b/net/ipv4/Kconfig
+@@ -468,6 +468,7 @@ config INET_DIAG_DESTROY
+ 
+ menuconfig TCP_CONG_ADVANCED
+ 	bool "TCP: advanced congestion control"
++	default y
+ 	help
+ 	  Support for selection of various TCP congestion control
+ 	  modules.
+@@ -481,7 +482,7 @@ if TCP_CONG_ADVANCED
+ 
+ config TCP_CONG_BIC
+ 	tristate "Binary Increase Congestion (BIC) control"
+-	default m
++	default n
+ 	help
+ 	  BIC-TCP is a sender-side only change that ensures a linear RTT
+ 	  fairness under large windows while offering both scalability and
+@@ -503,7 +504,7 @@ config TCP_CONG_CUBIC
+ 
+ config TCP_CONG_WESTWOOD
+ 	tristate "TCP Westwood+"
+-	default m
++	default n
+ 	help
+ 	  TCP Westwood+ is a sender-side only modification of the TCP Reno
+ 	  protocol stack that optimizes the performance of TCP congestion
+@@ -517,7 +518,7 @@ config TCP_CONG_WESTWOOD
+ 
+ config TCP_CONG_HTCP
+ 	tristate "H-TCP"
+-	default m
++	default n
+ 	help
+ 	  H-TCP is a send-side only modifications of the TCP Reno
+ 	  protocol stack that optimizes the performance of TCP
+@@ -665,7 +666,7 @@ config TCP_CONG_CDG
+ 
+ config TCP_CONG_BBR
+ 	tristate "BBR TCP"
+-	default n
++	default y
+ 	help
+ 
+ 	  BBR (Bottleneck Bandwidth and RTT) TCP congestion control aims to
+@@ -680,7 +681,7 @@ config TCP_CONG_BBR
+ 
+ choice
+ 	prompt "Default TCP congestion control"
+-	default DEFAULT_CUBIC
++	default DEFAULT_BBR
+ 	help
+ 	  Select the TCP congestion control that will be used by default
+ 	  for all connections.
+diff --git a/net/ipv4/tcp_ipv4.c b/net/ipv4/tcp_ipv4.c
+index 6f6f66f9e..0ab1f4be2 100644
+--- a/net/ipv4/tcp_ipv4.c
++++ b/net/ipv4/tcp_ipv4.c
+@@ -3212,7 +3212,7 @@ static void __net_init tcp_set_hashinfo(struct net *net)
+ 
+ static int __net_init tcp_sk_init(struct net *net)
+ {
+-	net->ipv4.sysctl_tcp_ecn = 2;
++	net->ipv4.sysctl_tcp_ecn = 1;
+ 	net->ipv4.sysctl_tcp_ecn_fallback = 1;
+ 
+ 	net->ipv4.sysctl_tcp_base_mss = TCP_BASE_MSS;
+@@ -3282,7 +3282,7 @@ static int __net_init tcp_sk_init(struct net *net)
+ 	net->ipv4.sysctl_tcp_comp_sack_delay_ns = NSEC_PER_MSEC;
+ 	net->ipv4.sysctl_tcp_comp_sack_slack_ns = 100 * NSEC_PER_USEC;
+ 	net->ipv4.sysctl_tcp_comp_sack_nr = 44;
+-	net->ipv4.sysctl_tcp_fastopen = TFO_CLIENT_ENABLE;
++	net->ipv4.sysctl_tcp_fastopen = 3;
+ 	net->ipv4.sysctl_tcp_fastopen_blackhole_timeout = 0;
+ 	atomic_set(&net->ipv4.tfo_active_disable_times, 0);
+ 
