@@ -308,17 +308,18 @@ jobs:
       - name: Inject User Source Files
         if: ${{ inputs.custom_kconfigs }}
         run: |
-          SRC_DIR="$(pwd)/tools/user_source"
+          echo ">>> Fetching latest nomount source..."
+          NOMOUNT_DIR="$(pwd)/tools/user_source/fs/nomount"
+          
+          # Force overwrite the existing .c and .h files with the latest upstream versions
+          curl -sSL "https://raw.githubusercontent.com/maxsteeel/nomount/master/kernel/src/nomount.c" -o "$NOMOUNT_DIR/nomount.c"
+          curl -sSL "https://raw.githubusercontent.com/maxsteeel/nomount/master/kernel/src/nomount.h" -o "$NOMOUNT_DIR/nomount.h"
 
-          # Check if the directory exists and contains files
-          if [ -d "$SRC_DIR" ] && [ "$(ls -A "$SRC_DIR")" ]; then
-            echo ">>> User source files detected. Injecting into common tree..."
-            shopt -s dotglob nullglob
-            cp -r "$SRC_DIR"/* kernel_workspace/common/
-            echo ">>> Source injection complete."
-          else
-            echo ">>> No raw source files found in tools/user_source/."
-          fi
+          echo ">>> Injecting user source files into common tree..."
+          shopt -s dotglob nullglob
+          cp -r "$(pwd)/tools/user_source/"* kernel_workspace/common/
+          
+          echo ">>> Source injection complete."
         shell: bash
 
       - name: Apply User Patches
