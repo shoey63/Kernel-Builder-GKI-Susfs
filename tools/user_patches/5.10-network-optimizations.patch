@@ -1,8 +1,8 @@
 diff --git a/net/ipv4/Kconfig b/net/ipv4/Kconfig
-index 2dfb12230..01de03e5c 100644
+index 23b06063e..15d17209e 100644
 --- a/net/ipv4/Kconfig
 +++ b/net/ipv4/Kconfig
-@@ -468,6 +468,7 @@ config INET_DIAG_DESTROY
+@@ -469,6 +469,7 @@ config INET_DIAG_DESTROY
  
  menuconfig TCP_CONG_ADVANCED
  	bool "TCP: advanced congestion control"
@@ -10,7 +10,7 @@ index 2dfb12230..01de03e5c 100644
  	help
  	  Support for selection of various TCP congestion control
  	  modules.
-@@ -481,7 +482,7 @@ if TCP_CONG_ADVANCED
+@@ -482,7 +483,7 @@ if TCP_CONG_ADVANCED
  
  config TCP_CONG_BIC
  	tristate "Binary Increase Congestion (BIC) control"
@@ -19,7 +19,7 @@ index 2dfb12230..01de03e5c 100644
  	help
  	  BIC-TCP is a sender-side only change that ensures a linear RTT
  	  fairness under large windows while offering both scalability and
-@@ -495,7 +496,7 @@ config TCP_CONG_BIC
+@@ -496,7 +497,7 @@ config TCP_CONG_BIC
  
  config TCP_CONG_CUBIC
  	tristate "CUBIC TCP"
@@ -28,7 +28,7 @@ index 2dfb12230..01de03e5c 100644
  	help
  	  This is version 2.0 of BIC-TCP which uses a cubic growth function
  	  among other techniques.
-@@ -503,7 +504,7 @@ config TCP_CONG_CUBIC
+@@ -504,7 +505,7 @@ config TCP_CONG_CUBIC
  
  config TCP_CONG_WESTWOOD
  	tristate "TCP Westwood+"
@@ -37,7 +37,7 @@ index 2dfb12230..01de03e5c 100644
  	help
  	  TCP Westwood+ is a sender-side only modification of the TCP Reno
  	  protocol stack that optimizes the performance of TCP congestion
-@@ -517,7 +518,7 @@ config TCP_CONG_WESTWOOD
+@@ -518,7 +519,7 @@ config TCP_CONG_WESTWOOD
  
  config TCP_CONG_HTCP
  	tristate "H-TCP"
@@ -46,7 +46,7 @@ index 2dfb12230..01de03e5c 100644
  	help
  	  H-TCP is a send-side only modifications of the TCP Reno
  	  protocol stack that optimizes the performance of TCP
-@@ -665,7 +666,7 @@ config TCP_CONG_CDG
+@@ -666,7 +667,7 @@ config TCP_CONG_CDG
  
  config TCP_CONG_BBR
  	tristate "BBR TCP"
@@ -55,7 +55,7 @@ index 2dfb12230..01de03e5c 100644
  	help
  
  	  BBR (Bottleneck Bandwidth and RTT) TCP congestion control aims to
-@@ -680,7 +681,7 @@ config TCP_CONG_BBR
+@@ -681,7 +682,7 @@ config TCP_CONG_BBR
  
  choice
  	prompt "Default TCP congestion control"
@@ -64,7 +64,7 @@ index 2dfb12230..01de03e5c 100644
  	help
  	  Select the TCP congestion control that will be used by default
  	  for all connections.
-@@ -724,7 +725,7 @@ endif
+@@ -725,7 +726,7 @@ endif
  config TCP_CONG_CUBIC
  	tristate
  	depends on !TCP_CONG_ADVANCED
@@ -74,24 +74,24 @@ index 2dfb12230..01de03e5c 100644
  config DEFAULT_TCP_CONG
  	string
 diff --git a/net/ipv4/tcp_ipv4.c b/net/ipv4/tcp_ipv4.c
-index 753bd4f4c..12b49cec4 100644
+index f0552920e..9d00e0905 100644
 --- a/net/ipv4/tcp_ipv4.c
 +++ b/net/ipv4/tcp_ipv4.c
-@@ -3155,7 +3155,7 @@ static void __net_init tcp_set_hashinfo(struct net *net)
+@@ -2884,7 +2884,7 @@ static int __net_init tcp_sk_init(struct net *net)
+ 		*per_cpu_ptr(net->ipv4.tcp_sk, cpu) = sk;
+ 	}
  
- static int __net_init tcp_sk_init(struct net *net)
- {
 -	net->ipv4.sysctl_tcp_ecn = 2;
 +	net->ipv4.sysctl_tcp_ecn = 1;
  	net->ipv4.sysctl_tcp_ecn_fallback = 1;
  
  	net->ipv4.sysctl_tcp_base_mss = TCP_BASE_MSS;
-@@ -3225,7 +3225,7 @@ static int __net_init tcp_sk_init(struct net *net)
+@@ -2953,7 +2953,7 @@ static int __net_init tcp_sk_init(struct net *net)
  	net->ipv4.sysctl_tcp_comp_sack_delay_ns = NSEC_PER_MSEC;
  	net->ipv4.sysctl_tcp_comp_sack_slack_ns = 100 * NSEC_PER_USEC;
  	net->ipv4.sysctl_tcp_comp_sack_nr = 44;
 -	net->ipv4.sysctl_tcp_fastopen = TFO_CLIENT_ENABLE;
 +	net->ipv4.sysctl_tcp_fastopen = 3;
+ 	spin_lock_init(&net->ipv4.tcp_fastopen_ctx_lock);
  	net->ipv4.sysctl_tcp_fastopen_blackhole_timeout = 0;
  	atomic_set(&net->ipv4.tfo_active_disable_times, 0);
- 

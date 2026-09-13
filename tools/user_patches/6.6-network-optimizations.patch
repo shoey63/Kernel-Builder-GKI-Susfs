@@ -14,16 +14,8 @@ index 3a13197d5..9b9311242 100644
  CONFIG_IPV6_ROUTER_PREF=y
  CONFIG_IPV6_ROUTE_INFO=y
  CONFIG_IPV6_OPTIMISTIC_DAD=y
-@@ -269,6 +263,7 @@ CONFIG_NET_SCH_TBF=y
- CONFIG_NET_SCH_NETEM=y
- CONFIG_NET_SCH_CODEL=y
- CONFIG_NET_SCH_FQ_CODEL=y
-+CONFIG_NET_SCH_CAKE=y
- CONFIG_NET_SCH_FQ=y
- CONFIG_NET_SCH_INGRESS=y
- CONFIG_NET_CLS_BASIC=y
 diff --git a/net/ipv4/Kconfig b/net/ipv4/Kconfig
-index 2dfb12230..5fce2b1c8 100644
+index 2dfb12230..01de03e5c 100644
 --- a/net/ipv4/Kconfig
 +++ b/net/ipv4/Kconfig
 @@ -468,6 +468,7 @@ config INET_DIAG_DESTROY
@@ -43,6 +35,15 @@ index 2dfb12230..5fce2b1c8 100644
  	help
  	  BIC-TCP is a sender-side only change that ensures a linear RTT
  	  fairness under large windows while offering both scalability and
+@@ -495,7 +496,7 @@ config TCP_CONG_BIC
+ 
+ config TCP_CONG_CUBIC
+ 	tristate "CUBIC TCP"
+-	default y
++	default n
+ 	help
+ 	  This is version 2.0 of BIC-TCP which uses a cubic growth function
+ 	  among other techniques.
 @@ -503,7 +504,7 @@ config TCP_CONG_CUBIC
  
  config TCP_CONG_WESTWOOD
@@ -79,6 +80,15 @@ index 2dfb12230..5fce2b1c8 100644
  	help
  	  Select the TCP congestion control that will be used by default
  	  for all connections.
+@@ -724,7 +725,7 @@ endif
+ config TCP_CONG_CUBIC
+ 	tristate
+ 	depends on !TCP_CONG_ADVANCED
+-	default y
++	default n
+ 
+ config DEFAULT_TCP_CONG
+ 	string
 diff --git a/net/ipv4/tcp_ipv4.c b/net/ipv4/tcp_ipv4.c
 index 6f6f66f9e..0ab1f4be2 100644
 --- a/net/ipv4/tcp_ipv4.c
