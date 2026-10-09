@@ -1,0 +1,70 @@
+diff --git a/arch/arm64/configs/gki_defconfig b/arch/arm64/configs/gki_defconfig
+index 16adb7019..e41ebe930 100644
+--- a/arch/arm64/configs/gki_defconfig
++++ b/arch/arm64/configs/gki_defconfig
+@@ -298,6 +298,8 @@ CONFIG_BT_HCIUART=m
+ CONFIG_BT_HCIUART_LL=y
+ CONFIG_BT_HCIUART_BCM=y
+ CONFIG_BT_HCIUART_QCA=y
++CONFIG_CFG80211=m
++CONFIG_MAC80211=m
+ CONFIG_RFKILL=m
+ CONFIG_NFC=m
+ CONFIG_PCI=y
+@@ -379,7 +381,7 @@ CONFIG_USB_NET_AQC111=m
+ # CONFIG_WLAN_VENDOR_INTEL is not set
+ # CONFIG_WLAN_VENDOR_INTERSIL is not set
+ # CONFIG_WLAN_VENDOR_MARVELL is not set
+-# CONFIG_WLAN_VENDOR_MEDIATEK is not set
++CONFIG_MT76x2U=m
+ # CONFIG_WLAN_VENDOR_RALINK is not set
+ # CONFIG_WLAN_VENDOR_REALTEK is not set
+ # CONFIG_WLAN_VENDOR_RSI is not set
+diff --git a/drivers/net/wireless/mediatek/mt76/Kconfig b/drivers/net/wireless/mediatek/mt76/Kconfig
+index 9ff43f1fc..39b2d8ba7 100644
+--- a/drivers/net/wireless/mediatek/mt76/Kconfig
++++ b/drivers/net/wireless/mediatek/mt76/Kconfig
+@@ -1,15 +1,14 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ config MT76_CORE
+-	tristate
++	tristate "MediaTek MT76 core"
+ 
+ config MT76_LEDS
+ 	bool
+ 	depends on MT76_CORE
+ 	depends on LEDS_CLASS=y || MT76_CORE=LEDS_CLASS
+-	default y
+ 
+ config MT76_USB
+-	tristate
++	tristate "MediaTek MT76_USB"
+ 	depends on MT76_CORE
+ 
+ config MT76_SDIO
+@@ -17,11 +16,11 @@ config MT76_SDIO
+ 	depends on MT76_CORE
+ 
+ config MT76x02_LIB
+-	tristate
++	tristate "MediaTek MT76x02_LIB"
+ 	select MT76_CORE
+ 
+ config MT76x02_USB
+-	tristate
++	tristate "MediaTek MT76x02_USB"
+ 	select MT76_USB
+ 
+ config MT76_CONNAC_LIB
+diff --git a/drivers/net/wireless/mediatek/mt76/mt76x2/Kconfig b/drivers/net/wireless/mediatek/mt76/mt76x2/Kconfig
+index 5fd4973e3..7e23709ab 100644
+--- a/drivers/net/wireless/mediatek/mt76/mt76x2/Kconfig
++++ b/drivers/net/wireless/mediatek/mt76/mt76x2/Kconfig
+@@ -1,6 +1,6 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ config MT76x2_COMMON
+-	tristate
++	tristate "MediaTek MT76x2_COMMON"
+ 	select MT76x02_LIB
+ 
+ config MT76x2E

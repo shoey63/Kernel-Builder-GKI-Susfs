@@ -14,10 +14,6 @@ CONFIG_MAC80211=m
 # 1. VENDOR GATEKEEPERS (DOORS OPEN)
 # ==========================================
 CONFIG_WLAN_VENDOR_MEDIATEK=y
-CONFIG_WLAN_VENDOR_ATH=y
-CONFIG_MEDIA_USB_SUPPORT=y
-CONFIG_MEDIA_DIGITAL_TV_SUPPORT=y
-CONFIG_MEDIA_SDR_SUPPORT=y
 
 # ==========================================
 # 2. MEDIATEK ALFA MODULES
@@ -28,75 +24,3 @@ CONFIG_MT76x02_LIB=m
 CONFIG_MT76x02_USB=m
 CONFIG_MT76x2_COMMON=m
 CONFIG_MT76x2U=m
-
-# ==========================================
-# 3. ATHEROS & SDR MODULES
-# ==========================================
-CONFIG_I2C_MUX=m
-CONFIG_ATH9K_HTC=m
-CONFIG_CARL9170=m
-CONFIG_BT_HCIBFUSB=m
-CONFIG_DVB_USB_V2=m
-CONFIG_DVB_USB_RTL28XXU=m
-
-# ==========================================
-# 4. USB ETHERNET & SNIFFING (WIRED)
-# ==========================================
-CONFIG_USB_USBNET=m
-CONFIG_USB_NET_AX8817X=m
-CONFIG_USB_NET_AX88179_178A=m
-CONFIG_USB_NET_CDCETHER=m
-CONFIG_USB_NET_RNDIS_HOST=m
-CONFIG_USB_RTL8150=m
-CONFIG_USB_RTL8152=m
-
-# ==========================================
-# 5. SYSTEM V IPC (METASPLOIT / POSTGRESQL)
-# ==========================================
-
-# ==========================================
-# 5. USB SERIAL
-# ==========================================
-CONFIG_USB_SERIAL=m
-CONFIG_USB_SERIAL_CP210X=m
-CONFIG_USB_SERIAL_FTDI_SIO=m
-CONFIG_USB_SERIAL_PL2303=m
-CONFIG_USB_SERIAL_CH341=m
-
-# ==========================================
-# 6. CARSENAL
-# ==========================================
-CONFIG_CAN=m
-CONFIG_CAN_RAW=m
-CONFIG_CAN_BCM=m
-CONFIG_CAN_GW=m
-CONFIG_CAN_DEV=m
-CONFIG_CAN_VCAN=m
-CONFIG_CAN_SLCAN=m
-CONFIG_CAN_GS_USB=m
-
-# ==========================================
-# 7. BLUETOOTH ARSENAL (External USB Dongles)
-# ==========================================
-CONFIG_BT_HCIBTUSB=m
-CONFIG_BT_HCIBTUSB_BCM=y
-CONFIG_BT_HCIBTUSB_MTK=y
-CONFIG_BT_HCIBTUSB_RTL=y
-
-# ==========================================
-# 8. LEGACY WI-FI (Ralink & Realtek)
-# ==========================================
-CONFIG_WLAN_VENDOR_RALINK=y
-CONFIG_RT2X00=m
-CONFIG_RT2800USB=m
-CONFIG_RT2800USB_RT33XX=y
-CONFIG_RT2800USB_RT35XX=y
-CONFIG_RT2800USB_RT3573=y
-CONFIG_RT2800USB_RT53XX=y
-CONFIG_RT2800USB_RT55XX=y
-CONFIG_RT2800USB_UNKNOWN=y
-
-CONFIG_WLAN_VENDOR_REALTEK=y
-CONFIG_RTL8187=m
-CONFIG_RTL8XXXU=m
-CONFIG_RTL8XXXU_UNTESTED=y

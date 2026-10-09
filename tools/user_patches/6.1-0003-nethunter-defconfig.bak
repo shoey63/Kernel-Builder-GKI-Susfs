@@ -1,0 +1,22 @@
+diff --git a/arch/arm64/configs/gki_defconfig b/arch/arm64/configs/gki_defconfig
+index 16adb7019..e41ebe930 100644
+--- a/arch/arm64/configs/gki_defconfig
++++ b/arch/arm64/configs/gki_defconfig
+@@ -298,6 +298,8 @@ CONFIG_BT_HCIUART=m
+ CONFIG_BT_HCIUART_LL=y
+ CONFIG_BT_HCIUART_BCM=y
+ CONFIG_BT_HCIUART_QCA=y
++CONFIG_CFG80211=m
++CONFIG_MAC80211=m
+ CONFIG_RFKILL=m
+ CONFIG_NFC=m
+ CONFIG_PCI=y
+@@ -379,7 +381,7 @@ CONFIG_USB_NET_AQC111=m
+ # CONFIG_WLAN_VENDOR_INTEL is not set
+ # CONFIG_WLAN_VENDOR_INTERSIL is not set
+ # CONFIG_WLAN_VENDOR_MARVELL is not set
+-# CONFIG_WLAN_VENDOR_MEDIATEK is not set
++CONFIG_MT76x2U=m
+ # CONFIG_WLAN_VENDOR_RALINK is not set
+ # CONFIG_WLAN_VENDOR_REALTEK is not set
+ # CONFIG_WLAN_VENDOR_RSI is not set
