@@ -287,13 +287,20 @@ fi
 # 5.11 Fix preinit.c close_fd API Mismatch (Kernel 5.10)
 echo ">>> Checking close_fd API compatibility in preinit.c..."
 
-if [ "$K_VER" = "5" ] && [ "$K_PATCH" = "10" ]; then
+if [ "${BASE_VER:-}" = "5.10" ]; then
+    echo ">>> Checking close_fd API compatibility in preinit.c..."
     PREINIT_FILE="common/drivers/kernelsu/preinit/preinit.c"
-    if [ -f "$PREINIT_FILE" ] && grep -q "close_fd(" "$PREINIT_FILE"; then
-        echo "  -> Kernel 5.10 detected. Downgrading close_fd() to __close_fd()..."
-        # Regex captures the variable (e.g., 'fd') and formats it for the 5.10 API
-        sed -i 's/close_fd(\([^)]*\))/__close_fd(current->files, \1)/g' "$PREINIT_FILE"
-        echo "  -> preinit.c API mismatch resolved for 5.10!"
+    
+    if [ -f "$PREINIT_FILE" ]; then
+        if grep -q "ksu___close_fd" "$PREINIT_FILE"; then
+            echo "  -> Translating obsolete SuSFS macro to native 5.10 API..."
+            sed -i 's/ksu___close_fd/__close_fd/g' "$PREINIT_FILE"
+        fi
+        
+        if grep -E -q "\bclose_fd\(" "$PREINIT_FILE"; then
+            echo "  -> Translating modern close_fd() to native 5.10 __close_fd()..."
+            sed -i -E 's/\bclose_fd\(([^)]+)\)/__close_fd(current->files, \1)/g' "$PREINIT_FILE"
+        fi
     fi
 fi
 
