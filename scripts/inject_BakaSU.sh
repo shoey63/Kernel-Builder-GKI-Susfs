@@ -87,11 +87,29 @@ if [ -f "$SELINUX_HIDE_FILE" ]; then
         fi
     fi
     
-    # 3. Polyfill my_setprocattr wrapper for hooks.c compatibility
-    if ! grep -q "my_setprocattr(const char" "$SELINUX_HIDE_FILE"; then
+    # 3. Polyfill 50_patch Linker Stubs (my_setprocattr & Preinit)
+    if ! grep -q "ksu_setup_preinit_file" "$SELINUX_HIDE_FILE"; then
+        echo ">>> [HOTFIX] Injecting safe C stubs to bypass preinit linker panics..."
         cat << 'EOF' >> "$SELINUX_HIDE_FILE"
 
-// Global wrapper to satisfy hooks.c static patch
+/* BakaSU 50_patch Preinit & Hook Linker Stubs */
+struct filename;
+struct user_arg_ptr;
+struct task_struct;
+struct selinux_state;
+
+/* Safely bypasses SuSFS preinit interception to prevent Rescue Party */
+int ksu_setup_preinit_file(struct filename **filename_ptr, struct user_arg_ptr *argv_user) {
+    return 0; 
+}
+
+int ksu_preinit_handle_post_execveat(int *fd, struct filename **filename_ptr,
+                void *argv_user, void *envp_user,
+                int *flags, int *retval, int *preinit_fd) {
+    return 0;
+}
+
+/* Satisfies static hooks.c calls */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0) || defined(KSU_COMPAT_SETPROCATTR_USE_NEW_PROTOTYPE)
 int __nocfi my_setprocattr(const char *name, void *value, size_t size) {
     return ksu_handle_selinux_setprocattr(name, value, size);
