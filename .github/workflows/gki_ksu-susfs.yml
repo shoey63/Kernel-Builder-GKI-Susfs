@@ -405,6 +405,30 @@ jobs:
           OFFICIAL_HASH=${{ env.OFFICIAL_HASH }} \
           OFFICIAL_DATE=${{ env.OFFICIAL_DATE }} \
           bash ./scripts/build_kernel.sh
+  
+      - name: Inject KernelPatch (KPM) Engine
+        if: inputs.root_manager == 'SukiSU-Ultra'
+        run: |
+          echo ">>> Fetching latest SukiSU-Ultra APK to extract kpimg core..."
+          SUKI_API="https://api.github.com/repos/SukiSU-Ultra/SukiSU-Ultra/releases/latest"
+          APK_URL=$(curl -s "$SUKI_API" | grep "browser_download_url.*\.apk" | cut -d '"' -f 4 | head -n 1)
+          wget -qO manager.apk "$APK_URL"
+          unzip -j manager.apk "assets/kpm/kpimg"
+          
+          echo ">>> Compiling Linux patcher tool from ShirkNeko source..."
+          git clone --depth 1 https://github.com/ShirkNeko/SukiSU_KernelPatch_patch.git kp_src
+          cd kp_src/tools
+          make
+          # The Makefile outputs a binary named 'kptools'
+          cp kptools ../../kp
+          cd ../../
+          chmod +x kp
+          
+          echo ">>> Patching raw kernel Image..."
+          ./kp -p -i out/Image -k kpimg -o out/Image-patched
+          mv out/Image-patched out/Image
+          
+          echo ">>> KPM Engine successfully injected into CI pipeline!"
           
       - name: Pull stock boot.img from OTA
         if: env.REPACK_ENABLED == 'true'
