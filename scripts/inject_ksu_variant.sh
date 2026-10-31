@@ -50,7 +50,6 @@ fi
 # ========================================================================
 # (These variables were populated by the sourced variant script)
 SHORT_HASH=${UPSTREAM_HASH:0:7}
-echo "UPSTREAM_HASH=${UPSTREAM_HASH}" >> $GITHUB_ENV
 
 echo ">>> Injecting Sandbox Variables into Kbuild..."
 TARGET_KBUILD="${MANAGER_DIR}/kernel/Kbuild"

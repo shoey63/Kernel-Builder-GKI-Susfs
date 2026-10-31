@@ -22,38 +22,36 @@ cd ..
 
 cd "${MANAGER_DIR}"
 
-if [ "${USE_DYNAMIC_TRANSPLANT}" == "true" ]; then
-    echo ">>> 2. Dynamic mode active: Fetching latest official upstream (${TARGET_BRANCH})..."
-    git fetch --tags --force "https://github.com/${UPSTREAM_REPO}.git" "${TARGET_BRANCH}"
+echo ">>> 2. Fetching upstream data from ${UPSTREAM_REPO} to cross-reference..."
+git fetch --quiet "https://github.com/${UPSTREAM_REPO}.git" "${TARGET_BRANCH}"
 
-    echo ">>> 3. Rebasing '${KSU_VARIANT_REF}' onto bleeding-edge upstream/${TARGET_BRANCH}..."
+if [ "${USE_DYNAMIC_TRANSPLANT}" == "true" ]; then
+    echo ">>> 3. Dynamic mode active: Rebasing clone onto YAML-provided Upstream Hash (${UPSTREAM_HASH:0:7})..."
     git config user.name "github-actions[bot]"
     git config user.email "github-actions[bot]@users.noreply.github.com"
 
-    if git rebase FETCH_HEAD; then
+    if git rebase "${UPSTREAM_HASH}"; then
         echo "  -> On-the-fly rebase succeeded cleanly!"
         UPSTREAM_BRANCH="${TARGET_BRANCH}"
     else
         echo "  -> [WARNING] Rebase conflict detected with latest upstream!"
         git rebase --abort
-        echo "  -> Aborted rebase and fell back to last known-good '${KSU_VARIANT_REF}' state."
+        echo "  -> Aborted rebase and fell back to '${KSU_VARIANT_REF}'."
         UPSTREAM_BRANCH="${KSU_VARIANT_REF}"
     fi
 else
-    echo ">>> 2. Safe fallback channel active: Fetching upstream sync point..."
-    git fetch --quiet --tags --force "https://github.com/${UPSTREAM_REPO}.git" "${TARGET_BRANCH}"
+    echo ">>> 3. Stable mode active: Calculating exact upstream anchor commit via merge-base..."
     
-    echo ">>> 3. Using pinned '${KSU_VARIANT_REF}' state without rebasing."
+    # Mathematically finds the divergence point, bypassing any custom emergency commits
+    UPSTREAM_HASH=$(git merge-base HEAD FETCH_HEAD)
+    echo "  -> Found mathematically true upstream anchor: ${UPSTREAM_HASH:0:7}"
+    
+    # Export it so fetch_manager.sh can use it in the exact-match API hunt later
+    echo "UPSTREAM_HASH=$UPSTREAM_HASH" >> $GITHUB_ENV
     UPSTREAM_BRANCH="${KSU_VARIANT_REF}"
 fi
 
-# 4. Calculate the official upstream sync point for version count and Manager APK matching
-RAW_BASE=$(git merge-base HEAD FETCH_HEAD)
-
-set +o pipefail
-UPSTREAM_HASH=$(git log -n 1 --first-parent "${RAW_BASE}" --format="%H" -i --grep="ci skip" --grep="skip ci" --invert-grep -- manager/ kernel/ userspace/ ":!*Cargo.lock" ":!*Cargo.toml")
-set -o pipefail
-
+# 4. Calculate the official counts EXACTLY from the rock-solid hash
 CALCULATED_COUNT=$(git rev-list --count "${UPSTREAM_HASH}" 2>/dev/null || echo "11950")
 CALCULATED_TAG=$(git describe --tags --abbrev=0 "${UPSTREAM_HASH}" 2>/dev/null || echo "v0.0.0")
 

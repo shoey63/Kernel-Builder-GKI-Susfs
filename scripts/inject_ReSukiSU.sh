@@ -10,7 +10,7 @@ LEGACY_BRANCH="ResukiSU-Legacy"
 # The specific commit hash required to match the v4.2.0-rc3 Manager APK
 TARGET_APK_HASH="239e1e88"
 
-echo ">>> Cloning frozen legacy repository..."
+echo ">>> 1. Cloning frozen legacy repository..."
 git clone -b "${LEGACY_BRANCH}" "${LEGACY_REPO}" "${MANAGER_DIR}"
 
 # Prevent setup.sh from performing a redundant clone
@@ -21,8 +21,7 @@ cd ..
 
 cd "${MANAGER_DIR}"
 
-# Hardcode the hash to 239e1e88 for the Gatekeeper and Artifact Fetcher,
-# while leaving the actual filesystem at HEAD (which contains the required Kleaf bypasses).
+echo ">>> 2. Anchoring Kbuild to legacy APK hash (${TARGET_APK_HASH})..."
 UPSTREAM_HASH="${TARGET_APK_HASH}"
 CALCULATED_TAG=$(git describe --tags --abbrev=0 "${TARGET_APK_HASH}" 2>/dev/null || echo "v4.2.0-rc3")
 CALCULATED_COUNT=$(git rev-list --count "${TARGET_APK_HASH}" 2>/dev/null || echo "11950")

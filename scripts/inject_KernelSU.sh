@@ -14,24 +14,22 @@ cd ..
 
 cd "${MANAGER_DIR}"
 
-if [ "${USE_DYNAMIC_TRANSPLANT}" == "true" ]; then
-    echo ">>> [DYNAMIC] Executing Automated Dynamic Transplant for KernelSU..."
-    
-    # In dynamic, HEAD is already pristine upstream. Grab the hash!
-    UPSTREAM_HASH=$(git log -n 1 --format="%H" -i --grep="ci skip" --grep="skip ci" --grep="clippy" --invert-grep -- manager/ kernel/ userspace/ .github/workflows/ ":!*Cargo.lock" ":!*Cargo.toml")
-    CALCULATED_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-    CALCULATED_COUNT=$(git rev-list --count "${UPSTREAM_HASH}" 2>/dev/null || echo "11950")
-    
-    UPSTREAM_BRANCH="${TARGET_BRANCH}"
+echo ">>> 2. Fetching upstream data from ${UPSTREAM_REPO} to cross-reference..."
+git fetch --quiet "https://github.com/${UPSTREAM_REPO}.git" "${TARGET_BRANCH}"
 
-    echo ">>> 2. Fetching Simonpunk's dynamic 10_enable_susfs_for_ksu patch..."
+if [ "${USE_DYNAMIC_TRANSPLANT}" == "true" ]; then
+    echo ">>> 3. Dynamic mode active: Anchoring clone to YAML-provided Upstream Hash (${UPSTREAM_HASH:0:7})..."
+    # Hard-reset to the exact verified hash before applying patches
+    git reset --hard "${UPSTREAM_HASH}"
+
+    echo ">>> 4. Fetching Simonpunk's dynamic 10_enable_susfs_for_ksu patch..."
     PATCH_URL="https://gitlab.com/simonpunk/susfs4ksu/-/raw/gki-android15-6.6-dev/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch"
 
     if wget -qO 10_enable_susfs_for_ksu.patch "$PATCH_URL"; then
-        echo ">>> 3. Applying SuSFS patch dynamically..."
+        echo ">>> 5. Applying SuSFS patch dynamically..."
         patch -p1 < 10_enable_susfs_for_ksu.patch || exit 1
         
-        echo ">>> 4. Injecting SuSFS Macros & Compiler Overrides into Kbuild..."
+        echo ">>> 6. Injecting SuSFS Macros & Compiler Overrides into Kbuild..."
         cat << 'EOF' >> kernel/Kbuild
 
 # --- Force SuSFS Macros and Compiler Overrides ---
@@ -59,23 +57,23 @@ EOF
         echo "[-] CRITICAL: Failed to download the SuSFS patch."
         exit 1
     fi
+    
+    UPSTREAM_BRANCH="${TARGET_BRANCH}"
 else
-    echo ">>> [STABLE] Safe fallback channel detected. Bypassing dynamic patching..."
+    echo ">>> 3. Stable mode active: Calculating exact upstream anchor commit via merge-base..."
     
+    # Mathematically finds the divergence point, bypassing any custom emergency commits
+    UPSTREAM_HASH=$(git merge-base HEAD FETCH_HEAD)
+    echo "  -> Found mathematically true upstream anchor: ${UPSTREAM_HASH:0:7}"
+    
+    # Export it so fetch_manager.sh can use it in the exact-match API hunt later
+    echo "UPSTREAM_HASH=$UPSTREAM_HASH" >> $GITHUB_ENV
     UPSTREAM_BRANCH="${KSU_VARIANT_REF}"
-    
-    echo ">>> Locating official upstream sync point for ${UPSTREAM_REPO}..."
-    # Guarantee safe tag math with --tags --force
-    git fetch --quiet --tags --force "https://github.com/${UPSTREAM_REPO}.git" "${TARGET_BRANCH}"
-    RAW_BASE=$(git merge-base HEAD FETCH_HEAD)
-    
-    set +o pipefail
-    UPSTREAM_HASH=$(git log -n 1 --first-parent "${RAW_BASE}" --format="%H" -i --grep="ci skip" --grep="skip ci" --grep="clippy" --invert-grep -- manager/ kernel/ userspace/ .github/workflows/ ":!*Cargo.lock" ":!*Cargo.toml")
-    set -o pipefail
-
-    CALCULATED_COUNT=$(git rev-list --count "${UPSTREAM_HASH}" 2>/dev/null || echo "11950")
-    CALCULATED_TAG=$(git describe --tags --abbrev=0 "${UPSTREAM_HASH}" 2>/dev/null || echo "v0.0.0")
 fi
+
+# 7. Calculate the official counts EXACTLY from the rock-solid hash
+CALCULATED_COUNT=$(git rev-list --count "${UPSTREAM_HASH}" 2>/dev/null || echo "11950")
+CALCULATED_TAG=$(git describe --tags --abbrev=0 "${UPSTREAM_HASH}" 2>/dev/null || echo "v0.0.0")
 
 # Exit the MANAGER_DIR universally
 cd ..

@@ -3,61 +3,58 @@
 
 echo ">>> Executing Integration Module for BakaSU..."
 
+# 1. Universally clone the target branch handed down by the YAML
+# (Dynamic = Pristine Upstream. Stable = shoey63 Fork)
+echo ">>> 1. Cloning target branch (${KSU_VARIANT_REF}) from ${KSU_VARIANT_REPO_URL}..."
+git clone -b "${KSU_VARIANT_REF}" "${KSU_VARIANT_REPO_URL}" "${MANAGER_DIR}"
+
+ln -sfn "../${MANAGER_DIR}" "common/${MANAGER_DIR}"
+cd common
+bash "${MANAGER_DIR}/kernel/setup.sh" "${KSU_VARIANT_REF}"
+cd ..
+
+cd "${MANAGER_DIR}"
+
+echo ">>> 2. Fetching upstream data from ${UPSTREAM_REPO} to cross-reference..."
+# Safely fetch without tags to prevent local collision panics during stable runs
+git fetch --quiet "https://github.com/${UPSTREAM_REPO}.git" "${TARGET_BRANCH}"
+
 if [ "${USE_DYNAMIC_TRANSPLANT}" == "true" ]; then
-    echo ">>> 1. Cloning pristine official BakaSU upstream..."
-    git clone -b "${TARGET_BRANCH}" "https://github.com/${UPSTREAM_REPO}.git" "${MANAGER_DIR}"
+    echo ">>> 3. Dynamic mode active: Anchoring pristine clone to YAML-provided Upstream Hash (${UPSTREAM_HASH:0:7})..."
     
-    ln -sfn "../${MANAGER_DIR}" "common/${MANAGER_DIR}"
-    cd common
-    bash "${MANAGER_DIR}/kernel/setup.sh" "${TARGET_BRANCH}"
-    cd ..
+    # We are already in the official upstream repo. Just lock to the exact verified hash.
+    git reset --hard "${UPSTREAM_HASH}"
     
-    cd "${MANAGER_DIR}"
-    UPSTREAM_HASH=$(git log -n 1 --format="%H" -i --grep="ci skip" --grep="skip ci" --grep="clippy" --invert-grep -- manager/ kernel/ userspace/ .github/workflows/ ":!*Cargo.lock" ":!*Cargo.toml")
-    CALCULATED_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-    CALCULATED_COUNT=$(git rev-list --count "${UPSTREAM_HASH}")
     UPSTREAM_BRANCH="${TARGET_BRANCH}"
 
-    echo ">>> 2. Applying dynamic Kleaf bypass & Kconfig overrides..."
+    echo ">>> Applying dynamic Kleaf bypass & Kconfig overrides..."
     sed -i 's/default KSU_TRACEPOINT_HOOK/default KSU_SUSFS/g' kernel/Kconfig
     sed -i 's/bool "Tracepoint Syscall Redirect"/bool "Tracepoint Syscall Redirect"\n\t\tdepends on n/g' kernel/Kconfig
     sed -i 's/depends on KSU != m/depends on n/g' kernel/Kconfig
     sed -i 's/ifeq ($(shell test -e $(srctree)\/fs\/susfs.c.*/ifeq (0,0)/g' kernel/Kbuild
     sed -i 's/cat $(srctree)\/include\/linux\/susfs.h |/cat $(srctree)\/include\/linux\/susfs.h 2>\/dev\/null |/g' kernel/Kbuild
-    cd ..
 else
-    echo ">>> Safe fallback channel detected. Cloning custom pipeline branch..."
-    git clone -b "${KSU_VARIANT_REF}" "${KSU_VARIANT_REPO_URL}" "${MANAGER_DIR}"
+    echo ">>> 3. Stable mode active: Calculating exact upstream anchor commit via merge-base..."
     
-    ln -sfn "../${MANAGER_DIR}" "common/${MANAGER_DIR}"
-    cd common
-    bash "${MANAGER_DIR}/kernel/setup.sh" "${KSU_VARIANT_REF}"
-    cd ..
+    # Mathematically finds the divergence point, bypassing any custom emergency commits
+    UPSTREAM_HASH=$(git merge-base HEAD FETCH_HEAD)
+    echo "  -> Found mathematically true upstream anchor: ${UPSTREAM_HASH:0:7}"
     
+    # Export it so fetch_manager.sh can use it in the exact-match API hunt later
+    echo "UPSTREAM_HASH=$UPSTREAM_HASH" >> $GITHUB_ENV
     UPSTREAM_BRANCH="${KSU_VARIANT_REF}"
-    
-    cd "${MANAGER_DIR}"
-    
-    echo ">>> Locating official upstream sync point for ${UPSTREAM_REPO}..."
-    git fetch --quiet "https://github.com/${UPSTREAM_REPO}.git" "${TARGET_BRANCH}"
-    RAW_BASE=$(git merge-base HEAD FETCH_HEAD)
-    
-    set +o pipefail
-    UPSTREAM_HASH=$(git log -n 1 --first-parent "${RAW_BASE}" --format="%H" -i --grep="ci skip" --grep="skip ci" --grep="clippy" --invert-grep -- manager/ kernel/ userspace/ .github/workflows/ ":!*Cargo.lock" ":!*Cargo.toml")
-    set -o pipefail
-
-    CALCULATED_COUNT=$(git rev-list --count "${UPSTREAM_HASH}" 2>/dev/null || echo "11950")
-    CALCULATED_TAG=$(git describe --tags --abbrev=0 "${UPSTREAM_HASH}" 2>/dev/null || echo "v0.0.0")
-    
-    cd ..
 fi
 
+# 4. Calculate the official counts EXACTLY from the rock-solid hash
+CALCULATED_COUNT=$(git rev-list --count "${UPSTREAM_HASH}" 2>/dev/null || echo "11950")
+CALCULATED_TAG=$(git describe --tags --abbrev=0 "${UPSTREAM_HASH}" 2>/dev/null || echo "v0.0.0")
+
 # ---------------------------------------------------------
-# BakaSU Hotfixes
+# BakaSU Hotfixes (Applied universally to satisfy linkers)
 # ---------------------------------------------------------
 
 # We strip the $(error ...) directive to force compilation of our custom port.
-SUSFS_COMPAT_MK="${MANAGER_DIR}/kernel/tools/susfs_compat.mk"
+SUSFS_COMPAT_MK="kernel/tools/susfs_compat.mk"
 if [ -f "$SUSFS_COMPAT_MK" ]; then
     echo ">>> [HOTFIX] Neutering BakaSU strict SuSFS version gatekeeper..."
     sed -i '/Please wait susfs update/d' "$SUSFS_COMPAT_MK"
@@ -66,7 +63,7 @@ else
 fi
 
 # SELinux Hide LTO and Kernel Compat Patches
-SELINUX_HIDE_FILE="${MANAGER_DIR}/kernel/feature/selinux_hide.c"
+SELINUX_HIDE_FILE="kernel/feature/selinux_hide.c"
     
 # 1. Force compile manual hooks to satisfy 50_patch linker requirements
 echo ">>> [HOTFIX] Exposing BakaSU static symbols for hooks.c linker..."
@@ -75,9 +72,9 @@ sed -i 's|#include "compat/kernel_compat.h"|#include "compat/kernel_compat.h"\n\
 sed -i -E 's/(__maybe_static|static)[[:space:]]+ssize_t my_write_context/ssize_t my_write_context/g' "$SELINUX_HIDE_FILE"
 sed -i -E 's/(__maybe_static|static)[[:space:]]+ssize_t my_write_access/ssize_t my_write_access/g' "$SELINUX_HIDE_FILE"
 
-    # 3. Polyfill 50_patch Linker Stubs (Weak Polyfills)
-    echo ">>> [HOTFIX] Injecting safe WEAK C stubs to bypass linker panics..."
-    cat << 'EOF' >> "$SELINUX_HIDE_FILE"
+# 3. Polyfill 50_patch Linker Stubs (Weak Polyfills)
+echo ">>> [HOTFIX] Injecting safe WEAK C stubs to bypass linker panics..."
+cat << 'EOF' >> "$SELINUX_HIDE_FILE"
 
 /* BakaSU 50_patch Hook Linker Stubs (WEAK to avoid collisions) */
 struct filename;
@@ -127,6 +124,8 @@ __attribute__((weak)) struct selinux_state fake_state = {0};
 EOF
 fi
 echo "  -> BakaSU legacy variables safely un-hidden."
+
+cd ..
 
 echo "  -> Target Tag: $CALCULATED_TAG"
 echo "  -> Target Hash: $UPSTREAM_HASH"

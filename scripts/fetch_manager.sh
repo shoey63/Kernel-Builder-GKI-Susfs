@@ -12,8 +12,6 @@ REPO="${UPSTREAM_REPO}"
 
 echo ">>> Searching $REPO for a Release Manager..."
 
-DOWNLOAD_URLS=""
-
 # ReSukiSU (Frozen Museum Piece)
 if [[ "${ROOT_MANAGER}" == "ReSukiSU" ]]; then
     echo ">>> Legacy ReSukiSU target detected. Bypassing API hunt..."
@@ -30,75 +28,54 @@ if [[ "${ROOT_MANAGER}" == "ReSukiSU" ]]; then
 fi
 
 # ==========================================
-# 1. EXACT HASH MATCH
+# 1. DETERMINE RUN ID (DYNAMIC VS STABLE)
 # ==========================================
-echo ">>> Checking for exact upstream hash: ${UPSTREAM_HASH}"
-EXACT_RUNS=$(curl -s -H "Authorization: token $GH_TOKEN" \
-  "https://api.github.com/repos/$REPO/actions/workflows/$WORKFLOW_FILE/runs?head_sha=${UPSTREAM_HASH}&status=success&per_page=100")
-
-RUN_IDS=$(echo "$EXACT_RUNS" | jq -r '.workflow_runs[]?.id // empty')
-
-for ID in $RUN_IDS; do
-    echo ">>> Checking exact-match Run ID: $ID for artifacts..."
-    ARTIFACTS_JSON=$(curl -s -H "Authorization: token $GH_TOKEN" \
-      "https://api.github.com/repos/$REPO/actions/runs/$ID/artifacts")
+if [ -n "${UPSTREAM_RUN_ID:-}" ]; then
+    echo ">>> Dynamic Channel: Using pre-resolved YAML Run ID: ${UPSTREAM_RUN_ID}"
+    TARGET_RUN_ID="$UPSTREAM_RUN_ID"
+else
+    echo ">>> Stable Channel: Hunting for exact-match Run ID for hash: ${UPSTREAM_HASH:0:7}..."
     
-    # MODIFIED: Output the actual artifact name along with the URL
-    DOWNLOAD_URLS=$(echo "$ARTIFACTS_JSON" | jq -r '
-      .artifacts[]? 
-      | select(.name | test("(?i)(manager|kernelsu[_-]v|bakasu|sukisu)"))
-      | select(.name | test("(?i)(debug|mappings|gradle)") | not)
-      | select(.name | test("(?i)(armeabi-v7a|universal|x86_64|riscv64)") | not)
-      | select(.expired == false)
-      | "ARTIFACT|\(.name)|\(.archive_download_url)" // empty')
+    EXACT_RUNS=$(curl -s -H "Authorization: token $GH_TOKEN" \
+      "https://api.github.com/repos/$REPO/actions/workflows/$WORKFLOW_FILE/runs?head_sha=${UPSTREAM_HASH}&status=success&per_page=5")
+    
+    TARGET_RUN_ID=$(echo "$EXACT_RUNS" | jq -r '
+      .workflow_runs[]? 
+      | select(.artifacts_url != null) 
+      | .id' | head -n 1)
 
-    if [ -n "$DOWNLOAD_URLS" ]; then
-        echo ">>> Success! Found unexpired exact Manager artifacts in Run ID: $ID"
-        break
+    if [ -z "$TARGET_RUN_ID" ] || [ "$TARGET_RUN_ID" == "null" ]; then
+        echo "[-] FATAL: Could not find a successful upstream run for stable hash ${UPSTREAM_HASH:0:7}."
+        exit 1
     fi
-done
-
-# ==========================================
-# 2. WALK BACKWARDS THROUGH RECENT COMMITS
-# ==========================================
-if [ -z "$DOWNLOAD_URLS" ]; then
-    echo "[-] Exact match missing or lacked artifacts. Walking backward through recent successful ${TARGET_BRANCH} branch runs..."
-    
-    RECENT_RUNS=$(curl -s -H "Authorization: token ${GH_TOKEN}" \
-      "https://api.github.com/repos/${REPO}/actions/workflows/${WORKFLOW_FILE}/runs?branch=${TARGET_BRANCH}&status=success&per_page=100")
-
-    RECENT_RUN_IDS=$(echo "$RECENT_RUNS" | jq -r '.workflow_runs[]?.id // empty')
-    
-    for ID in $RECENT_RUN_IDS; do
-        echo ">>> Checking previous Run ID: $ID for artifacts..."
-        ARTIFACTS_JSON=$(curl -s -H "Authorization: token $GH_TOKEN" \
-          "https://api.github.com/repos/$REPO/actions/runs/$ID/artifacts")
-        
-        # MODIFIED: Output the actual artifact name along with the URL
-        DOWNLOAD_URLS=$(echo "$ARTIFACTS_JSON" | jq -r '
-          .artifacts[]? 
-          | select(.name | test("(?i)(manager|kernelsu[_-]v|bakasu|sukisu)"))
-          | select(.name | test("(?i)(debug|mappings|gradle)") | not)
-          | select(.name | test("(?i)(armeabi-v7a|universal|x86_64|riscv64)") | not)
-          | select(.expired == false)
-          | "ARTIFACT|\(.name)|\(.archive_download_url)" // empty')
-
-        if [ -n "$DOWNLOAD_URLS" ]; then
-            echo ">>> Success! Found unexpired fallback Manager artifacts in Run ID: $ID"
-            break
-        fi
-    done
+    echo "  -> Found exact match Run ID: $TARGET_RUN_ID"
 fi
 
 # ==========================================
-# 3. DOWNLOAD OR GRACEFUL EXIT
+# 2. DOWNLOAD ARTIFACTS
 # ==========================================
+echo ">>> Requesting artifacts for Run ID: ${TARGET_RUN_ID}..."
+ARTIFACTS_JSON=$(curl -s -H "Authorization: token $GH_TOKEN" \
+  "https://api.github.com/repos/$REPO/actions/runs/$TARGET_RUN_ID/artifacts")
+
+# Filter out unneeded architectures, debug/mapping files, and expired artifacts
+DOWNLOAD_URLS=$(echo "$ARTIFACTS_JSON" | jq -r '
+  .artifacts[]? 
+  | select(.name | test("(?i)(manager|kernelsu[_-]v|bakasu|sukisu)"))
+  | select(.name | test("(?i)(debug|mappings|gradle)") | not)
+  | select(.name | test("(?i)(armeabi-v7a|universal|x86_64|riscv64)") | not)
+  | select(.expired == false)
+  | "ARTIFACT|\(.name)|\(.archive_download_url)" // empty')
+
 if [ -z "$DOWNLOAD_URLS" ]; then
-    echo "[-] Warning: Exhausted search. Failed to locate ANY valid Manager artifacts for $REPO."
+    echo "[-] Warning: Exhausted search. Failed to locate valid Manager artifacts for Run ID: $TARGET_RUN_ID."
     echo "[-] Continuing CI run to completion without staging Manager APKs."
     exit 0
 fi
 
+# ==========================================
+# 3. EXTRACTION AND CLEANUP
+# ==========================================
 mkdir -p manager_apk
 
 IFS=$'\n'

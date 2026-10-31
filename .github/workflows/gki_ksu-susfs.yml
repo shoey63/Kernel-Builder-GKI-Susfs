@@ -291,7 +291,40 @@ jobs:
               echo "[-] Warning: MANIFEST_BRANCH not found. Falling back to default."
               echo "SUSFS_BRANCH=gki-android14-6.1-dev" >> $GITHUB_ENV
           fi
-
+          
+      - name: Resolve Upstream Hash and Artifacts
+        # Restrict this step to ONLY run on dynamic or main channels
+        if: inputs.root_manager != 'Stock' && inputs.root_manager != 'ReSukiSU' && (inputs.build_channel == 'dynamic' || inputs.build_channel == 'main')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo ">>> Dynamic Channel: Hunting for latest valid run in $UPSTREAM_REPO..."
+          RUNS_JSON=$(curl -s -H "Authorization: token $GH_TOKEN" \
+            "https://api.github.com/repos/$UPSTREAM_REPO/actions/workflows/$WORKFLOW_FILE/runs?branch=$TARGET_BRANCH&status=success&per_page=15")
+          RUN_DATA=$(echo "$RUNS_JSON" | jq -r '.workflow_runs[]? | "\(.id)|\(.head_sha)"')
+          
+          for ENTRY in $RUN_DATA; do
+              RUN_ID=$(echo "$ENTRY" | cut -d'|' -f1)
+              SHA=$(echo "$ENTRY" | cut -d'|' -f2)
+              
+              ARTIFACTS_JSON=$(curl -s -H "Authorization: token $GH_TOKEN" "https://api.github.com/repos/$UPSTREAM_REPO/actions/runs/$RUN_ID/artifacts")
+              VALID_ARTIFACTS=$(echo "$ARTIFACTS_JSON" | jq -r '[.artifacts[]? | select(.name | test("(?i)(manager|kernelsu[_-]v|bakasu|sukisu)")) | select(.name | test("(?i)(debug|mappings|gradle|armeabi-v7a|universal|x86_64|riscv64)") | not) | select(.expired == false)] | length')
+              
+              if [ "$VALID_ARTIFACTS" -gt 0 ]; then
+                  echo ">>> SUCCESS! Found valid artifacts on Run ID: $RUN_ID (SHA: ${SHA:0:7})"
+                  UPSTREAM_HASH="$SHA"
+                  
+                  echo "UPSTREAM_HASH=$SHA" >> $GITHUB_ENV
+                  echo "UPSTREAM_RUN_ID=$RUN_ID" >> $GITHUB_ENV
+                  break
+              fi
+          done
+          
+          if [ -z "${UPSTREAM_HASH:-}" ]; then
+             echo "[-] FATAL: Could not resolve a valid Upstream Hash."
+             exit 1
+          fi
+          
       - name: Integrate Root Manager (${{ inputs.root_manager }})
         if: inputs.root_manager != 'Stock' && inputs.enable_ksu_susfs == true
         env:
