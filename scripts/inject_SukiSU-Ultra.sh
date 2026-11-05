@@ -8,7 +8,7 @@ echo ">>> Executing Integration Module for SukiSU-Ultra..."
 if [ "${BUILD_CHANNEL}" != "main" ]; then
     echo ">>> [OVERRIDE] Routing SukiSU-Ultra base clone to shoey63/SukiSU-Ultra (stable)..."
     KSU_VARIANT_REPO_URL="https://github.com/shoey63/SukiSU-Ultra.git"
-    KSU_VARIANT_REF="stable"
+    KSU_VARIANT_REF="rebase"
 fi
 
 echo ">>> 1. Cloning target branch (${KSU_VARIANT_REF}) from ${KSU_VARIANT_REPO_URL}..."
