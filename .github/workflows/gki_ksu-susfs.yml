@@ -7,8 +7,7 @@ on:
         description: 'Build Channel'
         required: false
         type: choice
-        options: 
-          - rebase
+        options:
           - stable
           - dynamic 
           - main

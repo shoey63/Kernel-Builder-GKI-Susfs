@@ -8,7 +8,7 @@ echo ">>> Executing Integration Module for SukiSU-Ultra..."
 if [ "${BUILD_CHANNEL}" != "main" ]; then
     echo ">>> [OVERRIDE] Routing SukiSU-Ultra base clone to shoey63/SukiSU-Ultra (stable)..."
     KSU_VARIANT_REPO_URL="https://github.com/shoey63/SukiSU-Ultra.git"
-    KSU_VARIANT_REF="rebase"
+    KSU_VARIANT_REF="stable"
 fi
 
 echo ">>> 1. Cloning target branch (${KSU_VARIANT_REF}) from ${KSU_VARIANT_REPO_URL}..."
@@ -30,13 +30,19 @@ if [ "${USE_DYNAMIC_TRANSPLANT}" == "true" ]; then
     git config user.name "github-actions[bot]"
     git config user.email "github-actions[bot]@users.noreply.github.com"
 
-    if git rebase "${UPSTREAM_HASH}"; then
+    # Attempt the rebase, swallowing stderr to gracefully catch "invalid upstream" force-push errors
+    if git rebase "${UPSTREAM_HASH}" 2>/dev/null; then
         echo "  -> On-the-fly rebase succeeded cleanly!"
         UPSTREAM_BRANCH="${TARGET_BRANCH}"
     else
-        echo "  -> [WARNING] Rebase conflict detected with latest upstream!"
-        git rebase --abort
-        echo "  -> Aborted rebase and fell back to '${KSU_VARIANT_REF}'."
+        echo "  -> [WARNING] Rebase failed! Target hash (${UPSTREAM_HASH:0:7}) missing or conflicted."
+        git rebase --abort >/dev/null 2>&1 || true
+        
+        echo "  -> Aborting dynamic rebase. Falling back to mathematically true upstream anchor..."
+        UPSTREAM_HASH=$(git merge-base HEAD FETCH_HEAD)
+        echo "  -> Found upstream anchor via merge-base: ${UPSTREAM_HASH:0:7}"
+        
+        echo "UPSTREAM_HASH=$UPSTREAM_HASH" >> $GITHUB_ENV
         UPSTREAM_BRANCH="${KSU_VARIANT_REF}"
     fi
 else

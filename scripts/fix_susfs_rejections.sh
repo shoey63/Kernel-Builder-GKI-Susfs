@@ -74,6 +74,12 @@ if [ "${ROOT_MANAGER:-}" = "SukiSU-Ultra" ]; then
     fi
 fi
 
+# 1.6. Suppress -Werror,-Wunused-function in fs/susfs.c when SUS_SU / TRY_UMOUNT are disabled
+if [ -f "common/fs/susfs.c" ]; then
+    echo ">>> Marking unused cred helper functions as __maybe_unused in fs/susfs.c..."
+    sed -i 's/static struct cred \*susfs_switch_to_ksu_domain/static __maybe_unused struct cred *susfs_switch_to_ksu_domain/g' common/fs/susfs.c
+    sed -i 's/static void susfs_restore_creds/static __maybe_unused void susfs_restore_creds/g' common/fs/susfs.c
+fi
 
 # 2. Kernel 6.6+: Fix mm/rmap.c Redundant SuSFS Backport
 if [ -f "common/mm/rmap.c.rej" ]; then
