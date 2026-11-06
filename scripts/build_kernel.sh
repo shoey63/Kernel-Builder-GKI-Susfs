@@ -11,6 +11,40 @@ echo "=== Initializing Execution Engine ==="
 cd kernel_workspace
 mkdir -p ../out out/dist
 
+# Format exact UTC timestamp string (e.g. "Thu Sep  3 03:59:00 UTC 2026")
+BUILD_TIMESTAMP="$(LC_ALL=C date -u -d "@${OFFICIAL_DATE}" '+%a %b %e %H:%M:%S UTC %Y')"
+echo ">>> Target Build Timestamp: ${BUILD_TIMESTAMP}"
+echo ">>> Target Release Suffix : -g${OFFICIAL_HASH}"
+
+echo ">>> Hard-stamping release suffix and timestamp into Kleaf & Kbuild scripts (BASE_VER=${BASE_VER})..."
+
+# 1. Release Suffix (-g<hash>-ab<id>): Branch by BASE_VER to prevent double-stamping
+if [ "$BASE_VER" = "6.6" ] || [ "$BASE_VER" = "6.12" ]; then
+    if [ -f "build/kernel/kleaf/impl/stamp.bzl" ]; then
+        sed -i "s/stable_scmversion_cmd = _get_status_at_path.*/stable_scmversion_cmd = \"echo -g${OFFICIAL_HASH}\"/g" build/kernel/kleaf/impl/stamp.bzl
+        sed -i "s/-maybe-dirty//g" build/kernel/kleaf/impl/stamp.bzl
+        echo "  -> Patched stamp.bzl scmversion for $BASE_VER"
+    fi
+else
+    if [ -f "common/scripts/setlocalversion" ]; then
+        sed -i 's/echo "\$res"/res="${res%%-g*}"; res="${res%-maybe-dirty}"; res="${res%-dirty}"; echo "${res}-g'"${OFFICIAL_HASH}"'"/g' common/scripts/setlocalversion
+        sed -i 's/echo "\${res}"/res="${res%%-g*}"; res="${res%-maybe-dirty}"; res="${res%-dirty}"; echo "${res}-g'"${OFFICIAL_HASH}"'"/g' common/scripts/setlocalversion
+        echo "  -> Patched setlocalversion tail for $BASE_VER:"
+        tail -n 3 common/scripts/setlocalversion || true
+    fi
+fi
+
+# 2. Build Timestamp (uname -v): common/init/Makefile (6.1 / 6.6 / 6.12) & mkcompile_h (5.10 / 5.15)
+if [ -f "common/init/Makefile" ] && grep -q "^build-timestamp =" common/init/Makefile; then
+    sed -i "s|^build-timestamp = .*|build-timestamp = ${BUILD_TIMESTAMP}|g" common/init/Makefile
+    echo "  -> Patched common/init/Makefile:"
+    grep -n "build-timestamp =" common/init/Makefile || true
+elif [ -f "common/scripts/mkcompile_h" ]; then
+    sed -i "s|TIMESTAMP=\$KBUILD_BUILD_TIMESTAMP|TIMESTAMP=\"${BUILD_TIMESTAMP}\"|g" common/scripts/mkcompile_h
+    sed -i "s|TIMESTAMP=\`date\`|TIMESTAMP=\"${BUILD_TIMESTAMP}\"|g" common/scripts/mkcompile_h
+    echo "  -> Patched common/scripts/mkcompile_h for $BASE_VER"
+fi
+
 echo ">>> Marking repo as clean (sanitizes all custom configuration & source modifications)..."
 # Dynamically safeguards all modifications 
 git -C common ls-files -m | xargs -r git -C common update-index --assume-unchanged
@@ -32,6 +66,7 @@ if [ "$BASE_VER" != "5.10" ] && [ -f "tools/bazel" ]; then
     tools/bazel run --config=stamp \
       $TRIM_FLAGS \
       --action_env=SOURCE_DATE_EPOCH="$OFFICIAL_DATE" \
+      --action_env=KBUILD_BUILD_TIMESTAMP="$BUILD_TIMESTAMP" \
       --action_env=STABLE_BUILD_VERSION="-g$OFFICIAL_HASH" \
       --action_env=KLEAF_KERNEL_BUILD_VERSION="-g$OFFICIAL_HASH" \
       --action_env=KLEAF_SKIP_ABI_CHECKS=true \
@@ -49,6 +84,7 @@ else
     export KERNEL_DIR="common"
     export BUILD_CONFIG="common/build.config.gki.aarch64"
     export SOURCE_DATE_EPOCH="$OFFICIAL_DATE"
+    export KBUILD_BUILD_TIMESTAMP="$BUILD_TIMESTAMP"
     
     # Inject official hash and Make overrides
     export EXTRA_LINUX_VERSION="-g${OFFICIAL_HASH}"

@@ -56,7 +56,24 @@ on:
         description: "Full OTA ZIP URL (blank produces AK3 zip)"
         required: false
         type: string
+        
+      custom_uname_r:
+        description: |
+          Custom uname -r
+          <example>  6.1.162-android14-11-g9dd05ae3a1de-ab16261587
+          (Leave blank for repo default)
+        required: false
+        type: string
+        default: ''
 
+      custom_uname_v:
+        description: |
+          Custom uname -v
+          <example>  #1 SMP PREEMPT Thu Sep  3 03:59:00 UTC 2026
+          (Leave blank for repo default)
+        required: false
+        type: string
+        default: ''
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   MANIFEST_URL: https://android.googlesource.com/kernel/manifest
@@ -266,12 +283,38 @@ jobs:
             fi
           done
 
-          # Capture the PURE Google hash AND the official Unix timestamp
+          # Capture the PURE Google hash AND the official Unix timestamp (or apply user overrides)
           cd common
-          echo "OFFICIAL_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-          echo "OFFICIAL_DATE=$(git log -1 --format=%ct)" >> $GITHUB_ENV
-          echo ">>> Captured Hash: $(git rev-parse --short HEAD)"
-          echo ">>> Captured Date: $(git log -1 --format=%ct)"
+
+          INPUT_R="${{ inputs.custom_uname_r }}"
+          INPUT_V="${{ inputs.custom_uname_v }}"
+
+          if [ -n "$INPUT_R" ]; then
+            # Strip any leading/trailing whitespace and extract everything after '-g' (preserving -abXXXX)
+            CLEAN_HASH=$(echo "$INPUT_R" | xargs | sed -E 's/^.*-g([0-9a-fA-F]+.*)$/\1/; s/^g([0-9a-fA-F]+)/\1/')
+            echo "OFFICIAL_HASH=$CLEAN_HASH" >> $GITHUB_ENV
+            echo ">>> [OVERRIDE] Using Custom Release Suffix: -g$CLEAN_HASH"
+          else
+            DEFAULT_HASH=$(git rev-parse --short=12 HEAD)
+            echo "OFFICIAL_HASH=$DEFAULT_HASH" >> $GITHUB_ENV
+            echo ">>> Captured Default Hash: $DEFAULT_HASH"
+          fi
+
+          if [ -n "$INPUT_V" ]; then
+            # Strip '#1 SMP PREEMPT ' prefix if full uname -v was pasted
+            CLEAN_DATE_STR=$(echo "$INPUT_V" | sed -E 's/^#[0-9]+[[:space:]]+(SMP[[:space:]]+)?(PREEMPT(_DYNAMIC|_RT)?[[:space:]]+)?//')
+            if [[ "$CLEAN_DATE_STR" =~ ^[0-9]+$ ]]; then
+              CUSTOM_EPOCH="$CLEAN_DATE_STR"
+            else
+              CUSTOM_EPOCH=$(date -u -d "$CLEAN_DATE_STR" +%s)
+            fi
+            echo "OFFICIAL_DATE=$CUSTOM_EPOCH" >> $GITHUB_ENV
+            echo ">>> [OVERRIDE] Using Custom Date: $CLEAN_DATE_STR (Epoch: $CUSTOM_EPOCH)"
+          else
+            DEFAULT_DATE=$(git log -1 --format=%ct)
+            echo "OFFICIAL_DATE=$DEFAULT_DATE" >> $GITHUB_ENV
+            echo ">>> Captured Default Date: $DEFAULT_DATE"
+          fi
 
       - name: Calculate Dynamic SuSFS Branch
         if: inputs.root_manager != 'Stock' && inputs.enable_ksu_susfs == true
