@@ -40,15 +40,12 @@ if [ "${USE_DYNAMIC_TRANSPLANT}" == "true" ]; then
         exit 1
     fi
     
-    # 5. Force SuSFS Configuration Overrides
-echo ">>> Applying dynamic Kleaf bypass & Kconfig overrides for SuSFS..."
+# Force SuSFS Kconfig Default
+echo ">>> Selecting KSU_SUSFS as default hooking method in Kconfig..."
 sed -i 's/default KSU_TRACEPOINT_HOOK/default KSU_SUSFS/g' kernel/Kconfig
-sed -i 's/bool "Tracepoint Syscall Redirect"/bool "Tracepoint Syscall Redirect"\n\t\tdepends on n/g' kernel/Kconfig
 sed -i 's/depends on KSU != m/depends on n/g' kernel/Kconfig
-sed -i 's/ifeq ($(shell test -e $(srctree)\/fs\/susfs.c.*/ifeq (0,0)/g' kernel/Kbuild
-sed -i 's/cat $(srctree)\/include\/linux\/susfs.h |/cat $(srctree)\/include\/linux\/susfs.h 2>\/dev\/null |/g' kernel/Kbuild
 
-    
+    git add  kernel/Kconfig
     git commit -m "Merge susfs features from sync-up"
     UPSTREAM_BRANCH="${TARGET_BRANCH}"
 
