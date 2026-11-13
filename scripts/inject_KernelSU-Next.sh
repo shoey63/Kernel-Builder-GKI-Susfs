@@ -36,7 +36,7 @@ if [ "${USE_DYNAMIC_TRANSPLANT}" == "true" ]; then
         git --no-pager diff --diff-filter=U
         exit 1
     fi
-    
+ 
     git commit -m "Merge susfs features from pershoot"
     UPSTREAM_BRANCH="${TARGET_BRANCH}"
 else
@@ -51,7 +51,18 @@ else
     UPSTREAM_BRANCH="${KSU_VARIANT_REF}"
 fi
 
-# 6. Calculate the official counts EXACTLY from the rock-solid hash
+echo ">>> Applying universal hotfixes (masked by assume-unchanged)..."
+# Fix missing batch SID update on policy reload
+sed -i '/#else/{N;s/#else\n    reset_avc_cache(0);/#else\n    reset_avc_cache(0);\n    susfs_set_batch_sid();/2}' kernel/selinux/rules.c
+# Fix MLS L2H2 constraint corruption
+sed -i '/case CEXPR_L2H2:/{n;s/scontext->range.level\[0\]/tcontext->range.level[0]/;}' kernel/feature/selinux_hide.c
+# Prevent unsafe LTO function pointer resolution
+sed -i 's/security_dump_masked_av_fn = find_kernel_symbol_exact/\/\/ security_dump_masked_av_fn = find_kernel_symbol_exact/g' kernel/feature/selinux_hide.c
+sed -i 's/context_struct_compute_av_fn = find_kernel_symbol_exact/\/\/ context_struct_compute_av_fn = find_kernel_symbol_exact/g' kernel/feature/selinux_hide.c
+# Disable synchronous background throne tracker during first boot
+sed -i '/config KSU_THRONE_TRACKER_ALWAYS_THREADED/,/help/ s/default y/default n/' kernel/Kconfig
+
+# Calculate the official counts EXACTLY from the rock-solid hash
 CALCULATED_COUNT=$(git rev-list --count "${UPSTREAM_HASH}" 2>/dev/null || echo "11950")
 CALCULATED_TAG=$(git describe --tags --abbrev=0 "${UPSTREAM_HASH}" 2>/dev/null || echo "v0.0.0")
 
