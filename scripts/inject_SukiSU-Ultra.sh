@@ -31,8 +31,6 @@ if [ "${USE_DYNAMIC_TRANSPLANT}" == "true" ]; then
     echo ">>> 5. Transplanting built-in SuSFS kernel/ tree onto pristine main anchor..."
     git rm -rf --quiet kernel/
     git checkout FETCH_HEAD -- kernel/
-    
-    mv kernel/Makefile kernel/Kbuild 2>/dev/null || true
 
     git add kernel/
     git commit -m "chore: transplant built-in SuSFS kernel tree from upstream/builtin"
@@ -49,12 +47,14 @@ else
     UPSTREAM_BRANCH="${KSU_VARIANT_REF}"
 fi
 
+# Ensure Makefile is renamed to Kbuild on both dynamic and stable channels
+mv kernel/Makefile kernel/Kbuild 2>/dev/null || true
+
 echo ">>> Applying KPM overrides..."
 sed -i '/config KPM/,/help/ s/default n/default y/' kernel/Kconfig 2>/dev/null || true
 sed -i '/select KALLSYMS/d' kernel/Kconfig 2>/dev/null || true
-    
-echo ">>> Auditing and applying universal SukiSU-Ultra hotfixes..."
 
+echo ">>> Auditing and applying universal SukiSU-Ultra hotfixes..."
 
 # Fix #2: Safety check for MLS CEXPR_L2H2 constraint typo (scontext -> tcontext in selinux_hide.c)
 if [ -f "kernel/feature/selinux_hide.c" ] && grep -A 1 "case CEXPR_L2H2:" kernel/feature/selinux_hide.c | grep -q "scontext->range.level\[0\]"; then
@@ -86,11 +86,52 @@ else
     echo "  [i] SKIPPED Fix #3: lsm_hook.c already patched or not present."
 fi
 
+# Fix #4: Restore AVC Spoofing from upstream/main into builtin amalgamation
+echo ">>> Restoring AVC Spoofing feature from upstream/main (${UPSTREAM_HASH:0:7})..."
+git checkout "${UPSTREAM_HASH}" -- \
+    kernel/feature/avc_spoof.c \
+    kernel/feature/avc_spoof.h \
+    kernel/runtime/ksud_boot.h 2>/dev/null || true
+
+# 1. Inject AVC spoofing directly into the amalgamation wrapper
+if [ -f "kernel/ksu_main.c" ] && ! grep -q 'avc_spoof.c' "kernel/ksu_main.c"; then
+    echo '#include "feature/avc_spoof.c"' >> kernel/ksu_main.c
+    echo "  [+] Injected avc_spoof.c into ksu_main.c amalgamation."
+fi
+
+# 2. Restore the AVC Spoofing enum that the builtin tree omits
+for f in include/uapi/feature.h kernel/include/uapi/feature.h uapi/feature.h; do
+    if [ -f "$f" ] && ! grep -q 'KSU_FEATURE_AVC_SPOOF' "$f"; then
+        sed -i '/KSU_FEATURE_MOUNT_HIDE = 16,/a \    KSU_FEATURE_AVC_SPOOF = 10003,' "$f"
+        echo "  [+] Restored KSU_FEATURE_AVC_SPOOF (10003) enum in $f"
+    fi
+done
+
+# 3. Fix namespace collision exposed by the 10003 enum in the amalgamation wrapper
+if [ -f "kernel/policy/feature.c" ]; then
+    sed -i 's/forced_mask/feat_forced_mask/g' kernel/policy/feature.c
+    sed -i 's/forced_pending/feat_forced_pending/g' kernel/policy/feature.c
+    echo "  [+] Decoupled namespace collisions in feature.c"
+fi
+
+# 4. Restore AVC Spoofing boot sequence directly into the amalgamation file
+if [ -f "kernel/ksu_main.c" ] && ! grep -q 'ksu_avc_spoof_init();' "kernel/ksu_main.c"; then
+    sed -i '/ksu_selinux_hide_init();/i \    extern void ksu_avc_spoof_init(void);' kernel/ksu_main.c
+    sed -i '/ksu_selinux_hide_init();/a \    ksu_avc_spoof_init();' kernel/ksu_main.c
+
+    sed -i '/ksu_selinux_hide_exit();/i \    extern void ksu_avc_spoof_exit(void);' kernel/ksu_main.c
+    sed -i '/ksu_selinux_hide_exit();/a \    ksu_avc_spoof_exit();' kernel/ksu_main.c
+
+    sed -i '/ksu_feature_apply_forced();/i \    extern void ksu_avc_spoof_late_init(void);' kernel/ksu_main.c
+    sed -i '/ksu_feature_apply_forced();/i \    ksu_avc_spoof_late_init();' kernel/ksu_main.c
+
+    echo "  [+] Restored AVC Spoofing ignition switches in ksu_main.c"
+fi
+
 if ! git diff --quiet; then
     git add .
     git commit -am "Hotfixes applied"
 fi
-
 
 # Calculate the official counts EXACTLY from the rock-solid hash
 CALCULATED_COUNT=$(git rev-list --count "${UPSTREAM_HASH}" 2>/dev/null || echo "11950")
