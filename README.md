@@ -21,7 +21,7 @@ The result? You get one single, tailor-made kernel artifact and its exact matchi
 * **Safe Fallbacks:** If the bleeding-edge upstream commits break compilation, you can instantly toggle the CI to the `stable` channel to build from verified, safe forks.
 
 ## ⚙️ Features
-* **Multiple Root Managers:** Native integration support for `KernelSU`, `KernelSU-Next`, `SukiSU-Ultra`, `BakaSU`, and `ReSukiSU` (retained as a legacy fallback branch in case of BakaSU instability).
+* **Multiple Root Managers:** Native integration support for `KernelSU`, `KernelSU-Next`, `SukiSU-Nova`, `BakaSU`, and `ReSukiSU` (retained as a legacy fallback branch in case of BakaSU instability).
 * **Smart Stock Isolation:** Select `Stock` to guarantee a pristine Google source tree. Combine `Stock` with custom Kconfigs to build an "Enhanced Stock" kernel—perfect for APatch or Magisk users who need specific kernel features baked into the core without conflicting root source code pollution.
 * **SuSFS Integration:** Automated patching and macro injection for SuSFS to enable advanced path hiding, kstat spoofing, and mount masking.
 * **NoMount VFS:** Native integration of maxsteeel's NoMount for advanced kernel-level path redirection. The pipeline dynamically hooks the independent VFS tree directory and outputs a ready-to-flash KernelSU metamodule alongside the kernel.
@@ -57,7 +57,7 @@ In your forked repository, navigate to the **Actions** tab. Click **"I understan
 | **Build Channel** | Choose `dynamic` (latest upstream commits) or `stable` (fallback to verified forks if dynamic fails). |
 | **Build Name** | A custom name for your output artifact (e.g., `Pixel_10_Pro_Testing`). |
 | **Kernel Version** | The exact GKI target version you wish to build (e.g., `6.12.11`). |
-| **Root Environment** | Select your preferred root manager from the dropdown list (`KernelSU`, `KernelSU-Next`, `SukiSU-Ultra`, `BakaSU`, `ReSukiSU`, or `Stock`). |
+| **Root Environment** | Select your preferred root manager from the dropdown list (`KernelSU`, `KernelSU-Next`, `SukiSU-Nova`, `BakaSU`, `ReSukiSU`, or `Stock`). |
 | **Integrate Root Manager and SUSFS?** | Check to inject Kernel root and SUSFS. *(Ignored if `Stock` is selected).* |
 | **Inject NoMount VFS?** | Check to dynamically wire NoMount source directories into the VFS Kbuild tree and download the NoMount metamodule. |
 | **Enable Performance Networking?** | Check to apply custom network Kconfigs and version-aware `.patch` files to the kernel source tree. |

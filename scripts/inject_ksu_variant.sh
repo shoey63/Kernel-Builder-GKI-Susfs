@@ -15,7 +15,7 @@ case "${VARIANT}" in
     "ReSukiSU")
         export MANAGER_DIR="ReSukiSU"
         ;;
-    "SukiSU-Ultra" | "KernelSU" | "BakaSU")
+    "SukiSU-Nova" | "KernelSU" | "BakaSU")
         export MANAGER_DIR="KernelSU"
         ;;
     *)
@@ -53,7 +53,7 @@ SHORT_HASH=${UPSTREAM_HASH:0:7}
 
 echo ">>> Injecting Sandbox Variables into Build File..."
 
-# Support both Kbuild (KernelSU-Next/old) and Makefile (SukiSU-Ultra builtin)
+# Support both Kbuild (KernelSU-Next/old) and Makefile (SukiSU-Nova builtin)
 if [ -f "${MANAGER_DIR}/kernel/Kbuild" ]; then
     TARGET_BUILD_FILE="${MANAGER_DIR}/kernel/Kbuild"
 elif [ -f "${MANAGER_DIR}/kernel/Makefile" ]; then
@@ -78,7 +78,7 @@ if [ -n "$TARGET_BUILD_FILE" ] && [ -f "$TARGET_BUILD_FILE" ]; then
         echo "override KSU_BRANCH_NAME := ${UPSTREAM_BRANCH}"
         echo "override KSU_COMMIT_SHA := ${SHORT_HASH}" 
 
-        # --- SukiSU-Ultra Specific Namespaces ---
+        # --- SukiSU-Nova Specific Namespaces ---
         echo "override LOCAL_COUNT := ${CALCULATED_COUNT}"
         echo "override git_commit_count := ${CALCULATED_COUNT}"
         echo "override git_short_sha := ${SHORT_HASH}"

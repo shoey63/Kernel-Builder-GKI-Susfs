@@ -28,7 +28,7 @@ on:
         type: choice
         options:
           - KernelSU-Next
-          - SukiSU-Ultra
+          - SukiSU-Nova
           - BakaSU
           - KernelSU
           - Stock
@@ -209,8 +209,8 @@ jobs:
               T_BRANCH="dev"
               W_FILE="build-manager-ci.yml"
               ;;
-            "SukiSU-Ultra")
-              U_REPO="SukiSU-Ultra/SukiSU-Ultra"
+            "SukiSU-Nova")
+              U_REPO="SukiSU-Nova/SukiSU-Nova"
               T_BRANCH="main"
               W_FILE="build-manager.yml"
               ;;
@@ -482,12 +482,12 @@ jobs:
           bash ./scripts/build_kernel.sh
   
       - name: Inject KernelPatch (KPM) Engine
-        if: inputs.root_manager == 'SukiSU-Ultra'
+        if: inputs.root_manager == 'SukiSU-Nova'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo ">>> Fetching latest SukiSU-Ultra APK to extract kpimg core..."
-          SUKI_API="https://api.github.com/repos/SukiSU-Ultra/SukiSU-Ultra/releases/latest"
+          echo ">>> Fetching latest SukiSU-Nova APK to extract kpimg core..."
+          SUKI_API="https://api.github.com/repos/SukiSU-Nova/SukiSU-Nova/releases/latest"
           
           # 1. Try authenticated API request first to avoid rate limits
           APK_URL=$(curl -s -H "Authorization: token $GH_TOKEN" "$SUKI_API" | jq -r '.assets[]? | select(.name | endswith(".apk")) | .browser_download_url' | head -n 1)
@@ -495,12 +495,12 @@ jobs:
           # 2. Fallback to HTML scraping if API fails or returns null
           if [ -z "$APK_URL" ] || [ "$APK_URL" = "null" ]; then
               echo "[-] API request failed. Falling back to HTML scraping..."
-              APK_URL=$(curl -s "https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases/latest" | grep -oE 'href="/SukiSU-Ultra/SukiSU-Ultra/releases/download/[^/]+/[^"]+\.apk"' | head -n 1 | sed 's/^href="//;s/"$//')
+              APK_URL=$(curl -s "https://github.com/SukiSU-Nova/SukiSU-Nova/releases/latest" | grep -oE 'href="/SukiSU-Nova/SukiSU-Nova/releases/download/[^/]+/[^"]+\.apk"' | head -n 1 | sed 's/^href="//;s/"$//')
               [ -n "$APK_URL" ] && APK_URL="https://github.com$APK_URL"
           fi
           
           if [ -z "$APK_URL" ] || [ "$APK_URL" = "null" ]; then
-              echo "[-] FATAL: Could not resolve SukiSU-Ultra APK download URL."
+              echo "[-] FATAL: Could not resolve SukiSU-Nova APK download URL."
               exit 1
           fi
           
