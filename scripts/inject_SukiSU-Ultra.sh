@@ -14,6 +14,10 @@ cd ..
 
 cd "${MANAGER_DIR}"
 
+echo ">>> Configuring dummy Git identity for transplant and hotfix operations..."
+git config --global user.email "runner@github.actions"
+git config --global user.name "GitHub Actions Canary"
+
 echo ">>> 2. Fetching upstream data from ${UPSTREAM_REPO} to cross-reference..."
 git fetch --quiet "https://github.com/${UPSTREAM_REPO}.git" "${TARGET_BRANCH}"
 
@@ -23,10 +27,6 @@ if [ "${USE_DYNAMIC_TRANSPLANT}" == "true" ]; then
 
     echo ">>> 4. Fetching upstream builtin branch..."
     git fetch --quiet "https://github.com/${UPSTREAM_REPO}.git" builtin
-
-    echo ">>> Configuring dummy Git identity for transplant operations..."
-    git config --global user.email "runner@github.actions"
-    git config --global user.name "GitHub Actions Canary"
 
     echo ">>> 5. Transplanting built-in SuSFS kernel/ tree onto pristine main anchor..."
     git rm -rf --quiet kernel/
@@ -125,9 +125,9 @@ if [ -f "kernel/ksu_main.c" ] && ! grep -q 'ksu_avc_spoof_init();' "kernel/ksu_m
     echo "  [+] Restored AVC Spoofing ignition switches in ksu_main.c"
 fi
 
-if ! git diff --quiet; then
-    git add .
-    git commit -am "Hotfixes applied"
+git add -A
+if ! git diff --cached --quiet; then
+    git commit -m "chore: apply SukiSU-Ultra hotfixes"
 fi
 
 # Calculate the official counts EXACTLY from the rock-solid hash
