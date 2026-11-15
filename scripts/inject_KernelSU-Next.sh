@@ -101,9 +101,6 @@ else
     echo "  [i] SKIPPED Fix #4b: susfs_parse_sus_path_app_strings() not present in pkg_observer.c."
 fi
 
-git add .
-git commit -am "Hotfixes applied"
-
 # Calculate the official counts EXACTLY from the rock-solid hash
 CALCULATED_COUNT=$(git rev-list --count "${UPSTREAM_HASH}" 2>/dev/null || echo "11950")
 CALCULATED_TAG=$(git describe --tags --abbrev=0 "${UPSTREAM_HASH}" 2>/dev/null || echo "v0.0.0")
