@@ -44,6 +44,7 @@ ccflags-y += -DCONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=1
 ccflags-y += -DCONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=1
 ccflags-y += -DCONFIG_KSU_SUSFS_OPEN_REDIRECT=1
 ccflags-y += -DCONFIG_KSU_SUSFS_SUS_MAP=1
+ccflags-y += -DCONFIG_KSU_SUSFS_PRIORITY_UID_FILTER=1
 # --- Print SuSFS Version ---
 ifeq ($(strip $(CONFIG_KSU_SUSFS)),y)
 ifeq ($(shell test -e $(srctree)/fs/susfs.c; echo $$?),0)

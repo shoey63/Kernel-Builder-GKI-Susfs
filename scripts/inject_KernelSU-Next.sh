@@ -85,22 +85,6 @@ else
     echo "  [i] SKIPPED Fix #3b: context_struct_compute_av_fn lookup not active (already disabled or fixed)."
 fi
 
-# Fix #4a: Strip custom CMD_SUSFS_SET_SUS_PATH_UID_FILTER case from dispatch.c
-if [ -f "kernel/supercall/dispatch.c" ] && grep -q "CMD_SUSFS_SET_SUS_PATH_UID_FILTER" kernel/supercall/dispatch.c; then
-    sed -i '/case CMD_SUSFS_SET_SUS_PATH_UID_FILTER:/,+2d' kernel/supercall/dispatch.c
-    echo "  [+] APPLIED Fix #4a: Removed unsupported CMD_SUSFS_SET_SUS_PATH_UID_FILTER case from dispatch.c."
-else
-    echo "  [i] SKIPPED Fix #4a: CMD_SUSFS_SET_SUS_PATH_UID_FILTER not present in dispatch.c."
-fi
-
-# Fix #4b: Strip custom susfs_parse_sus_path_app_strings() from pkg_observer.c
-if [ -f "kernel/manager/pkg_observer.c" ] && grep -q "susfs_parse_sus_path_app_strings" kernel/manager/pkg_observer.c; then
-    sed -i '/susfs_parse_sus_path_app_strings();/d' kernel/manager/pkg_observer.c
-    echo "  [+] APPLIED Fix #4b: Removed unsupported susfs_parse_sus_path_app_strings() from pkg_observer.c."
-else
-    echo "  [i] SKIPPED Fix #4b: susfs_parse_sus_path_app_strings() not present in pkg_observer.c."
-fi
-
 # Calculate the official counts EXACTLY from the rock-solid hash
 CALCULATED_COUNT=$(git rev-list --count "${UPSTREAM_HASH}" 2>/dev/null || echo "11950")
 CALCULATED_TAG=$(git describe --tags --abbrev=0 "${UPSTREAM_HASH}" 2>/dev/null || echo "v0.0.0")
