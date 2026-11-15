@@ -47,9 +47,6 @@ else
     UPSTREAM_BRANCH="${KSU_VARIANT_REF}"
 fi
 
-# Ensure Makefile is renamed to Kbuild on both dynamic and stable channels
-mv kernel/Makefile kernel/Kbuild 2>/dev/null || true
-
 echo ">>> Applying KPM overrides..."
 sed -i '/config KPM/,/help/ s/default n/default y/' kernel/Kconfig 2>/dev/null || true
 sed -i '/select KALLSYMS/d' kernel/Kconfig 2>/dev/null || true
@@ -135,7 +132,7 @@ fi
 
 # Calculate the official counts EXACTLY from the rock-solid hash
 CALCULATED_COUNT=$(git rev-list --count "${UPSTREAM_HASH}" 2>/dev/null || echo "11950")
-CALCULATED_TAG=$(git describe --tags --abbrev=0 "${UPSTREAM_HASH}" 2>/dev/null || echo "v0.0.0")
+CALCULATED_TAG=$(git describe --tags --abbrev=0 "${UPSTREAM_HASH}" 2>/dev/null | sed 's/^v//' || echo "0.0.0")
 
 cd ..
 

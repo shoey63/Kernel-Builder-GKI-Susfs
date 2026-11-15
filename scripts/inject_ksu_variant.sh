@@ -51,10 +51,18 @@ fi
 # (These variables were populated by the sourced variant script)
 SHORT_HASH=${UPSTREAM_HASH:0:7}
 
-echo ">>> Injecting Sandbox Variables into Kbuild..."
-TARGET_KBUILD="${MANAGER_DIR}/kernel/Kbuild"
+echo ">>> Injecting Sandbox Variables into Build File..."
 
-if [ -f "$TARGET_KBUILD" ]; then
+# Support both Kbuild (KernelSU-Next/old) and Makefile (SukiSU-Ultra builtin)
+if [ -f "${MANAGER_DIR}/kernel/Kbuild" ]; then
+    TARGET_BUILD_FILE="${MANAGER_DIR}/kernel/Kbuild"
+elif [ -f "${MANAGER_DIR}/kernel/Makefile" ]; then
+    TARGET_BUILD_FILE="${MANAGER_DIR}/kernel/Makefile"
+else
+    TARGET_BUILD_FILE=""
+fi
+
+if [ -n "$TARGET_BUILD_FILE" ] && [ -f "$TARGET_BUILD_FILE" ]; then
     {
         # --- Official & Next Namespaces ---
         echo "override KSU_GIT_VERSION_VALID := false" 
@@ -77,15 +85,16 @@ if [ -f "$TARGET_KBUILD" ]; then
         echo "override git_branch := ${UPSTREAM_BRANCH}"
         echo "override git_latest_tag := ${CALCULATED_TAG}"
 
-        cat "$TARGET_KBUILD"
-    } > "${TARGET_KBUILD}.tmp" && mv "${TARGET_KBUILD}.tmp" "$TARGET_KBUILD"
+        cat "$TARGET_BUILD_FILE"
+    } > "${TARGET_BUILD_FILE}.tmp" && mv "${TARGET_BUILD_FILE}.tmp" "$TARGET_BUILD_FILE"
 
+    echo "  -> Target Build File: ${TARGET_BUILD_FILE}"
     echo "  -> Prepend Immutable Count: ${CALCULATED_COUNT}"
     echo "  -> Prepend Immutable Tag: ${CALCULATED_TAG}"
     echo "  -> Prepend Immutable SHA: ${SHORT_HASH}"
     echo "  -> Prepend Immutable Branch: ${UPSTREAM_BRANCH}"
 else
-    echo "[-] Warning: $TARGET_KBUILD not found. Sandbox variables not injected."
+    echo "[-] Warning: Neither Kbuild nor Makefile found in ${MANAGER_DIR}/kernel/. Sandbox variables not injected."
 fi
 
 # ========================================================================
