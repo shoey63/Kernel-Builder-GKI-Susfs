@@ -3859,6 +3859,11 @@
       "kernel": "6.18.38",
       "date": "lts",
       "android_version": "android17"
+    },
+    {
+      "kernel": "6.18.39",
+      "date": "lts",
+      "android_version": "android17"
     }
   ]
 }
