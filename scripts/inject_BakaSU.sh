@@ -19,6 +19,10 @@ echo ">>> 2. Fetching upstream data from ${UPSTREAM_REPO} to cross-reference..."
 # Safely fetch without tags to prevent local collision panics during stable runs
 git fetch --quiet "https://github.com/${UPSTREAM_REPO}.git" "${TARGET_BRANCH}"
 
+    echo ">>> Configuring dummy Git identity for transplant operations..."
+    git config --global user.email "runner@github.actions"
+    git config --global user.name "GitHub Actions Canary"
+    
 if [ "${USE_DYNAMIC_TRANSPLANT}" == "true" ]; then
     echo ">>> 3. Dynamic mode active: Anchoring pristine clone to YAML-provided Upstream Hash (${UPSTREAM_HASH:0:7})..."
     
@@ -28,10 +32,6 @@ if [ "${USE_DYNAMIC_TRANSPLANT}" == "true" ]; then
     echo ">>> 4. Fetching BakaSU sync-up laboratory..."
     git remote add bakasu_sync https://github.com/Baka-SU/BakaSU.git
     git fetch bakasu_sync sync-up
-
-    echo ">>> Configuring dummy Git identity for transplant operations..."
-    git config --global user.email "runner@github.actions"
-    git config --global user.name "GitHub Actions Canary"
 
     echo ">>> 5. Squashing and merging sync-up features onto pristine upstream tree..."
     if ! git merge --squash bakasu_sync/sync-up; then
@@ -59,6 +59,29 @@ else
     # Export it so fetch_manager.sh can use it in the exact-match API hunt later
     echo "UPSTREAM_HASH=$UPSTREAM_HASH" >> $GITHUB_ENV
     UPSTREAM_BRANCH="${KSU_VARIANT_REF}"
+fi
+
+echo ">>> Auditing and applying universal BakaSU hotfixes..."
+
+# Fix #1: Add missing <linux/task_work.h> header for TWA_RESUME in throne_tracker.c (5.10, 6.1, 6.6)
+if [ -f "kernel/manager/throne_tracker.c" ] && grep -q "TWA_RESUME" "kernel/manager/throne_tracker.c" && ! grep -q "<linux/task_work.h>" "kernel/manager/throne_tracker.c"; then
+    sed -i '1i #include <linux/task_work.h>' kernel/manager/throne_tracker.c
+    echo "  [+] APPLIED Fix #1: Injected <linux/task_work.h> into throne_tracker.c for TWA_RESUME."
+else
+    echo "  [i] SKIPPED Fix #1: <linux/task_work.h> already present or TWA_RESUME not used."
+fi
+
+# Fix #2: Bypass unguarded selinux_hide_init_setxattr() call when SuSFS SELinux hide is active
+if [ -f "kernel/feature/selinux_hide.c" ] && grep -q "ret = selinux_hide_init_setxattr();" "kernel/feature/selinux_hide.c"; then
+    sed -i 's/ret = selinux_hide_init_setxattr();/ret = 0; \/* bypassed unguarded call under SuSFS *\//' kernel/feature/selinux_hide.c
+    echo "  [+] APPLIED Fix #2: Replaced unguarded selinux_hide_init_setxattr() call with ret = 0 in selinux_hide.c."
+else
+    echo "  [i] SKIPPED Fix #2: selinux_hide_init_setxattr() call not found in selinux_hide.c."
+fi
+
+git add -A
+if ! git diff --cached --quiet; then
+    git commit -m "chore: apply BakaSU hotfixes"
 fi
 
 # 4. Calculate the official counts EXACTLY from the rock-solid hash
