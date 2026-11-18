@@ -18,15 +18,25 @@ echo ">>> Configuring dummy Git identity for transplant and hotfix operations...
 git config --global user.email "runner@github.actions"
 git config --global user.name "GitHub Actions Canary"
 
-echo ">>> 2. Fetching upstream data from ${UPSTREAM_REPO} to cross-reference..."
-git fetch --quiet "https://github.com/${UPSTREAM_REPO}.git" "${TARGET_BRANCH}"
+FORGEJO_GIT_URL="https://git.zako.shirkneko.top:20004/shirkneko/SukiSU.git"
+GITHUB_GIT_URL="https://github.com/${UPSTREAM_REPO}.git"
+
+echo ">>> 2. Fetching upstream data from Forgejo (with GitHub fallback)..."
+if git fetch --quiet --tags --force "${FORGEJO_GIT_URL}" "${TARGET_BRANCH}" 2>/dev/null; then
+    ACTIVE_UPSTREAM_URL="${FORGEJO_GIT_URL}"
+    echo "  -> Synced upstream ${TARGET_BRANCH} from Forgejo."
+else
+    git fetch --quiet --tags --force "${GITHUB_GIT_URL}" "${TARGET_BRANCH}"
+    ACTIVE_UPSTREAM_URL="${GITHUB_GIT_URL}"
+    echo "  -> Synced upstream ${TARGET_BRANCH} from GitHub fallback."
+fi
 
 if [ "${USE_DYNAMIC_TRANSPLANT}" == "true" ]; then
     echo ">>> 3. Dynamic mode active: Anchoring clone to YAML-provided Upstream Hash (${UPSTREAM_HASH:0:7})..."
     git reset --hard "${UPSTREAM_HASH}"
 
     echo ">>> 4. Fetching upstream builtin branch..."
-    git fetch --quiet "https://github.com/${UPSTREAM_REPO}.git" builtin
+    git fetch --quiet "${ACTIVE_UPSTREAM_URL}" builtin || git fetch --quiet "${GITHUB_GIT_URL}" builtin
 
     echo ">>> 5. Transplanting built-in SuSFS kernel/ tree onto pristine main anchor..."
     git rm -rf --quiet kernel/
@@ -36,11 +46,11 @@ if [ "${USE_DYNAMIC_TRANSPLANT}" == "true" ]; then
     git commit -m "chore: transplant built-in SuSFS kernel tree from upstream/builtin"
     UPSTREAM_BRANCH="${TARGET_BRANCH}"
 else
-    echo ">>> 3. Stable mode active: Calculating exact upstream anchor commit via merge-base..."
+    echo ">>> 3. Stable mode active: Resolving true upstream anchor via HEAD~1..."
     
-    # Mathematically finds the divergence point on main, bypassing the local transplant commit
-    UPSTREAM_HASH=$(git merge-base HEAD FETCH_HEAD)
-    echo "  -> Found mathematically true upstream anchor: ${UPSTREAM_HASH:0:7}"
+    # Step back past the local 'chore: transplant...' commit to get the true upstream anchor
+    UPSTREAM_HASH=$(git rev-parse HEAD~1)
+    echo "  -> Locked stable anchor: ${UPSTREAM_HASH:0:7}"
     
     # Export it so fetch_manager.sh can use it in the exact-match API hunt later
     echo "UPSTREAM_HASH=$UPSTREAM_HASH" >> $GITHUB_ENV
@@ -125,14 +135,68 @@ if [ -f "kernel/ksu_main.c" ] && ! grep -q 'ksu_avc_spoof_init();' "kernel/ksu_m
     echo "  [+] Restored AVC Spoofing ignition switches in ksu_main.c"
 fi
 
+# ==========================================
+# VERSION & METADATA RESOLUTION (FORGEJO -> GITHUB FALLBACK)
+# ==========================================
+echo ">>> Resolving SukiSU-Nova version metadata (Forgejo primary, GitHub fallback)..."
+
+# 1. Determine base tag from git (filtering only v[0-9]* tags like manager/build.gradle.kts)
+CALCULATED_TAG=$(git describe --tags --abbrev=0 --match "v[0-9]*" "${UPSTREAM_HASH}" 2>/dev/null | sed 's/^v//' || git tag --list "v[0-9]*" --sort=-v:refname | head -n 1 | sed 's/^v//' || echo "3.0.0")
+if [ -z "$CALCULATED_TAG" ]; then
+    CALCULATED_TAG="3.0.0"
+fi
+
+# 2. Try Forgejo releases first to match the exact Manager APK version code
+FORGEJO_REL_JSON=$(curl -sL --retry 3 --connect-timeout 10 --max-time 25 \
+    "https://git.zako.shirkneko.top:20004/api/v1/repos/shirkneko/SukiSU/releases" 2>/dev/null || true)
+
+APK_FILENAME=$(echo "$FORGEJO_REL_JSON" | jq -r --arg sha "${UPSTREAM_HASH}" --arg short "${UPSTREAM_HASH:0:7}" '
+    ([.[] | select(.target_commitish == $sha or (.target_commitish | startswith($short))) | .assets[]?.name | select(test("arm64-v8a.*\\.apk$"))] +
+     [.[] | select(.tag_name == "manager-ci" or .tag_name == "v3.0.0") | .assets[]?.name | select(test("arm64-v8a.*\\.apk$"))]) | first // empty
+' 2>/dev/null || true)
+
+# 3. Fallback to GitHub Releases if Forgejo is unreachable
+if [ -z "$APK_FILENAME" ]; then
+    echo "  [!] Forgejo release metadata unavailable. Falling back to GitHub Releases..."
+    GH_REL_JSON=$(curl -sL --connect-timeout 10 "https://api.github.com/repos/${UPSTREAM_REPO}/releases/latest" 2>/dev/null || true)
+    APK_FILENAME=$(echo "$GH_REL_JSON" | jq -r '.assets[]?.name | select(test("arm64-v8a.*\\.apk$"))' 2>/dev/null | head -n 1 || true)
+fi
+
+# Extract version code (e.g., 35012 from SukiSU_Nova_v3.0.0_35012-arm64-v8a-release.apk)
+APK_VER_CODE=$(echo "$APK_FILENAME" | sed -nE 's/.*_([0-9]+)-arm64-v8a.*/\1/p')
+APK_VER_TAG=$(echo "$APK_FILENAME" | sed -nE 's/^SukiSU_Nova_v?([^_]+)_[0-9]+-arm64-v8a.*/\1/p')
+
+if [ -n "$APK_VER_TAG" ]; then
+    CALCULATED_TAG="$APK_VER_TAG"
+fi
+
+if [ -n "$APK_VER_CODE" ]; then
+    TARGET_KSU_VER="$APK_VER_CODE"
+    # Back-calculate count using SukiSU-Nova main formula: 30000 + COUNT + 996
+    CALCULATED_COUNT=$((TARGET_KSU_VER - 30000 - 996))
+    echo "  -> Matched Manager APK (${APK_FILENAME}): Version=${TARGET_KSU_VER}, Count=${CALCULATED_COUNT}, Tag=${CALCULATED_TAG}"
+else
+    # Pure local Git fallback using main's formula (30000 + count + 996)
+    CALCULATED_COUNT=$(git rev-list --count "${UPSTREAM_HASH}" 2>/dev/null || echo "4002")
+    TARGET_KSU_VER=$((30000 + CALCULATED_COUNT + 996))
+    echo "  -> Fallback local Git math: Version=${TARGET_KSU_VER}, Count=${CALCULATED_COUNT}, Tag=${CALCULATED_TAG}"
+fi
+
+# Fix #5: Overwrite builtin's outdated version math (- 4001) with main's math (+ 996) and lock metadata for Kleaf sandbox
+if [ -f "kernel/Makefile" ]; then
+    SHORT_SHA="${UPSTREAM_HASH:0:8}"
+    sed -i "s|^VERSION_OFFSET[[:space:]]*:=.*|VERSION_OFFSET := 996|" kernel/Makefile
+    sed -i "s|expr \$(VERSION_BASE) + \$(LOCAL_COUNT) - \$(VERSION_OFFSET)|expr \$(VERSION_BASE) + \$(LOCAL_COUNT) + \$(VERSION_OFFSET)|" kernel/Makefile
+    sed -i "s|^KSU_VERSION[[:space:]]*:=.*|KSU_VERSION := ${TARGET_KSU_VER}|" kernel/Makefile
+    sed -i "s|^VERSION_TAG[[:space:]]*:=.*|VERSION_TAG := ${CALCULATED_TAG}|" kernel/Makefile
+    sed -i "s|^KSU_VERSION_FULL[[:space:]]*:=.*|KSU_VERSION_FULL := v${CALCULATED_TAG}-${SHORT_SHA}@${UPSTREAM_BRANCH}|" kernel/Makefile
+    echo "  [+] APPLIED Fix #5: Locked kernel/Makefile to KSU_VERSION=${TARGET_KSU_VER} [v${CALCULATED_TAG}-${SHORT_SHA}@${UPSTREAM_BRANCH}]"
+fi
+
 git add -A
 if ! git diff --cached --quiet; then
     git commit -m "chore: apply SukiSU-Nova hotfixes"
 fi
-
-# Calculate the official counts EXACTLY from the rock-solid hash
-CALCULATED_COUNT=$(git rev-list --count "${UPSTREAM_HASH}" 2>/dev/null || echo "11950")
-CALCULATED_TAG=$(git describe --tags --abbrev=0 "${UPSTREAM_HASH}" 2>/dev/null | sed 's/^v//' || echo "0.0.0")
 
 cd ..
 

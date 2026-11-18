@@ -12,19 +12,68 @@ REPO="${UPSTREAM_REPO}"
 
 echo ">>> Searching $REPO for a Release Manager..."
 
-# ReSukiSU (Frozen Museum Piece)
-if [[ "${ROOT_MANAGER}" == "ReSukiSU" ]]; then
-    echo ">>> Legacy ReSukiSU target detected. Bypassing API hunt..."
-    echo ">>> Fetching frozen v4.2.0-rc3 Release APK..."
-    
+# ==========================================
+# 0. SUKISU-NOVA FETCH (FORGEJO PRIMARY -> GITHUB FALLBACK)
+# ==========================================
+if [ "$VARIANT" == "SukiSU-Nova" ]; then
     mkdir -p manager_apk
-    curl -s -L \
-      -o "manager_apk/ReSukiSU_v4.2.0-rc3_35171-arm64-v8a-release.apk" \
-      "https://github.com/Baka-SU/BakaSU/releases/download/v4.2.0-rc3/ReSukiSU_v4.2.0-rc3_35171-arm64-v8a-release.apk"
-    
-    echo ">>> Manager successfully staged for final upload!"
-    ls -1 manager_apk/
-    exit 0
+    echo ">>> SukiSU-Nova detected: Querying Forgejo releases for matching arm64-v8a APK..."
+
+    FORGEJO_JSON=$(curl -sL --retry 3 --connect-timeout 10 --max-time 30 \
+      "https://git.zako.shirkneko.top:20004/api/v1/repos/shirkneko/SukiSU/releases" 2>/dev/null || true)
+
+    # 1. Try exact commit match on Forgejo first, then fallback to Forgejo manager-ci / latest release
+    APK_ENTRY=$(echo "$FORGEJO_JSON" | jq -r --arg sha "${UPSTREAM_HASH}" --arg short "${UPSTREAM_HASH:0:7}" '
+      ([.[] | select(.target_commitish == $sha or (.target_commitish | startswith($short))) | .assets[]? | select(.name | test("arm64-v8a.*\\.apk$")) | "\(.name)|\(.browser_download_url)"] +
+       [.[] | select(.tag_name == "manager-ci" or .tag_name == "v3.0.0") | .assets[]? | select(.name | test("arm64-v8a.*\\.apk$")) | "\(.name)|\(.browser_download_url)"]) | first // empty
+    ' 2>/dev/null || true)
+
+    if [ -n "$APK_ENTRY" ]; then
+        APK_NAME=$(echo "$APK_ENTRY" | cut -d'|' -f1)
+        APK_URL=$(echo "$APK_ENTRY" | cut -d'|' -f2)
+        echo "  -> Found Forgejo APK: $APK_NAME"
+        if curl -sL --retry 3 --connect-timeout 10 --max-time 120 -o "manager_apk/${APK_NAME}" "$APK_URL" && [ -s "manager_apk/${APK_NAME}" ]; then
+            echo ">>> Manager successfully staged from Forgejo!"
+            ls -1 manager_apk/
+            exit 0
+        else
+            echo "  [!] Forgejo APK download failed or empty. Falling back to GitHub Releases..."
+            rm -f "manager_apk/${APK_NAME}"
+        fi
+    else
+        echo "  [!] Could not resolve APK from Forgejo. Falling back to GitHub Releases..."
+    fi
+
+    # 2. Fallback to GitHub Releases (latest release, then manager-ci tag)
+    GH_REL_JSON=$(curl -sL -H "Authorization: token $GH_TOKEN" \
+      "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null || true)
+
+    GH_APK_ENTRY=$(echo "$GH_REL_JSON" | jq -r '
+      .assets[]?
+      | select(.name | test("arm64-v8a.*\\.apk$"))
+      | "\(.name)|\(.browser_download_url)"' 2>/dev/null | head -n 1 || true)
+
+    if [ -z "$GH_APK_ENTRY" ]; then
+        GH_CI_JSON=$(curl -sL -H "Authorization: token $GH_TOKEN" \
+          "https://api.github.com/repos/$REPO/releases/tags/manager-ci" 2>/dev/null || true)
+        GH_APK_ENTRY=$(echo "$GH_CI_JSON" | jq -r '
+          .assets[]?
+          | select(.name | test("arm64-v8a.*\\.apk$"))
+          | "\(.name)|\(.browser_download_url)"' 2>/dev/null | head -n 1 || true)
+    fi
+
+    if [ -n "$GH_APK_ENTRY" ]; then
+        APK_NAME=$(echo "$GH_APK_ENTRY" | cut -d'|' -f1)
+        APK_URL=$(echo "$GH_APK_ENTRY" | cut -d'|' -f2)
+        echo ">>> Downloading fallback GitHub Release APK: $APK_NAME..."
+        curl -sL -H "Authorization: token $GH_TOKEN" -o "manager_apk/${APK_NAME}" "$APK_URL"
+        echo ">>> Manager successfully staged from GitHub Releases!"
+        ls -1 manager_apk/
+        exit 0
+    else
+        echo "[-] Warning: Failed to locate SukiSU-Nova APK on both Forgejo and GitHub Releases."
+        exit 0
+    fi
 fi
 
 # ==========================================
