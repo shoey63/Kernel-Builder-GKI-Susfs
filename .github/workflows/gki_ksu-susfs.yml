@@ -335,38 +335,67 @@ jobs:
           fi
           
       - name: Resolve Upstream Hash and Artifacts
-        # Restrict this step to ONLY run on dynamic or main channels
         if: inputs.root_manager != 'Stock' && inputs.root_manager != 'ReSukiSU' && (inputs.build_channel == 'dynamic' || inputs.build_channel == 'main')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo ">>> Dynamic Channel: Hunting for latest valid run in $UPSTREAM_REPO..."
-          RUNS_JSON=$(curl -s -H "Authorization: token $GH_TOKEN" \
-            "https://api.github.com/repos/$UPSTREAM_REPO/actions/workflows/$WORKFLOW_FILE/runs?branch=$TARGET_BRANCH&status=success&per_page=15")
-          RUN_DATA=$(echo "$RUNS_JSON" | jq -r '.workflow_runs[]? | "\(.id)|\(.head_sha)"')
-          
-          for ENTRY in $RUN_DATA; do
-              RUN_ID=$(echo "$ENTRY" | cut -d'|' -f1)
-              SHA=$(echo "$ENTRY" | cut -d'|' -f2)
-              
-              ARTIFACTS_JSON=$(curl -s -H "Authorization: token $GH_TOKEN" "https://api.github.com/repos/$UPSTREAM_REPO/actions/runs/$RUN_ID/artifacts")
-              VALID_ARTIFACTS=$(echo "$ARTIFACTS_JSON" | jq -r '[.artifacts[]? | select(.name | test("(?i)(manager|kernelsu[_-]v|bakasu|sukisu)")) | select(.name | test("(?i)(debug|mappings|gradle|armeabi-v7a|universal|x86_64|riscv64)") | not) | select(.expired == false)] | length')
-              
-              if [ "$VALID_ARTIFACTS" -gt 0 ]; then
-                  echo ">>> SUCCESS! Found valid artifacts on Run ID: $RUN_ID (SHA: ${SHA:0:7})"
-                  UPSTREAM_HASH="$SHA"
-                  
-                  echo "UPSTREAM_HASH=$SHA" >> $GITHUB_ENV
-                  echo "UPSTREAM_RUN_ID=$RUN_ID" >> $GITHUB_ENV
-                  break
+          if [ "${{ inputs.root_manager }}" = "SukiSU-Nova" ]; then
+              echo ">>> SukiSU-Nova: Resolving bleeding-edge main commit from Forgejo (GitHub fallback)..."
+              SHA=$(curl -sL --connect-timeout 10 --max-time 20 \
+                "https://git.zako.shirkneko.top:20004/api/v1/repos/shirkneko/SukiSU/releases/tags/manager-ci" 2>/dev/null \
+                | jq -r '.target_commitish // empty' 2>/dev/null || true)
+              SOURCE="Forgejo manager-ci release"
+
+              if ! [[ "$SHA" =~ ^[0-9a-f]{7,40}$ ]]; then
+                  SHA=$(git ls-remote "https://git.zako.shirkneko.top:20004/shirkneko/SukiSU.git" "refs/heads/$TARGET_BRANCH" 2>/dev/null | awk '{print $1}' || true)
+                  SOURCE="Forgejo git ls-remote"
               fi
-          done
-          
-          if [ -z "${UPSTREAM_HASH:-}" ]; then
-             echo "[-] FATAL: Could not resolve a valid Upstream Hash."
-             exit 1
+
+              if [[ "$SHA" =~ ^[0-9a-f]{7,40}$ ]]; then
+                  echo ">>> SUCCESS! Resolved ${SOURCE} SHA: ${SHA:0:7}"
+                  echo "UPSTREAM_HASH=$SHA" >> "$GITHUB_ENV"
+                  echo "UPSTREAM_RUN_ID=forgejo-manager-ci" >> "$GITHUB_ENV"
+              else
+                  echo "[-] Warning: Forgejo unreachable. Falling back to GitHub git ls-remote..."
+                  SHA=$(git ls-remote "https://github.com/$UPSTREAM_REPO.git" "refs/heads/$TARGET_BRANCH" 2>/dev/null | awk '{print $1}' || true)
+                  if [[ "$SHA" =~ ^[0-9a-f]{7,40}$ ]]; then
+                      echo ">>> SUCCESS! Resolved GitHub main SHA via fallback: ${SHA:0:7}"
+                      echo "UPSTREAM_HASH=$SHA" >> "$GITHUB_ENV"
+                      echo "UPSTREAM_RUN_ID=github-release-fallback" >> "$GITHUB_ENV"
+                  else
+                      echo "[-] FATAL: Failed to resolve SukiSU-Nova Upstream Hash from both Forgejo and GitHub."
+                      exit 1
+                  fi
+              fi
+          else
+              echo ">>> Dynamic Channel: Hunting for latest valid run in $UPSTREAM_REPO..."
+              RUNS_JSON=$(curl -s -H "Authorization: token $GH_TOKEN" \
+                "https://api.github.com/repos/$UPSTREAM_REPO/actions/workflows/$WORKFLOW_FILE/runs?branch=$TARGET_BRANCH&status=success&per_page=15")
+              RUN_DATA=$(echo "$RUNS_JSON" | jq -r '.workflow_runs[]? | "\(.id)|\(.head_sha)"')
+              
+              for ENTRY in $RUN_DATA; do
+                  RUN_ID=$(echo "$ENTRY" | cut -d'|' -f1)
+                  SHA=$(echo "$ENTRY" | cut -d'|' -f2)
+                  
+                  ARTIFACTS_JSON=$(curl -s -H "Authorization: token $GH_TOKEN" "https://api.github.com/repos/$UPSTREAM_REPO/actions/runs/$RUN_ID/artifacts")
+                  VALID_ARTIFACTS=$(echo "$ARTIFACTS_JSON" | jq -r '[.artifacts[]? | select(.name | test("(?i)(manager|kernelsu[_-]v|bakasu|sukisu)")) | select(.name | test("(?i)(debug|mappings|gradle|armeabi-v7a|universal|x86_64|riscv64)") | not) | select(.expired == false)] | length')
+                  
+                  if [ "$VALID_ARTIFACTS" -gt 0 ]; then
+                      echo ">>> SUCCESS! Found valid artifacts on Run ID: $RUN_ID (SHA: ${SHA:0:7})"
+                      UPSTREAM_HASH="$SHA"
+                      
+                      echo "UPSTREAM_HASH=$SHA" >> $GITHUB_ENV
+                      echo "UPSTREAM_RUN_ID=$RUN_ID" >> $GITHUB_ENV
+                      break
+                  fi
+              done
+              
+              if [ -z "${UPSTREAM_HASH:-}" ]; then
+                 echo "[-] FATAL: Could not resolve a valid Upstream Hash."
+                 exit 1
+              fi
           fi
-          
+
       - name: Integrate Root Manager (${{ inputs.root_manager }})
         if: inputs.root_manager != 'Stock' && inputs.enable_ksu_susfs == true
         env:
