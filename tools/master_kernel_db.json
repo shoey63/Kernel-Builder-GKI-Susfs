@@ -1149,6 +1149,16 @@
       "kernel": "5.10.272",
       "date": "lts",
       "android_version": "android12"
+    },
+    {
+      "kernel": "5.10.273",
+      "date": "lts",
+      "android_version": "android12"
+    },
+    {
+      "kernel": "5.10.274",
+      "date": "lts",
+      "android_version": "android12"
     }
   ],
   "5.15": [
@@ -2046,6 +2056,16 @@
       "kernel": "5.15.223",
       "date": "lts",
       "android_version": "android13"
+    },
+    {
+      "kernel": "5.15.224",
+      "date": "lts",
+      "android_version": "android13"
+    },
+    {
+      "kernel": "5.15.225",
+      "date": "lts",
+      "android_version": "android13"
     }
   ],
   "6.1": [
@@ -2828,6 +2848,56 @@
       "kernel": "6.1.182",
       "date": "lts",
       "android_version": "android14"
+    },
+    {
+      "kernel": "6.1.183",
+      "date": "lts",
+      "android_version": "android14"
+    },
+    {
+      "kernel": "6.1.184",
+      "date": "lts",
+      "android_version": "android14"
+    },
+    {
+      "kernel": "6.1.185",
+      "date": "lts",
+      "android_version": "android14"
+    },
+    {
+      "kernel": "6.1.186",
+      "date": "lts",
+      "android_version": "android14"
+    },
+    {
+      "kernel": "6.1.187",
+      "date": "lts",
+      "android_version": "android14"
+    },
+    {
+      "kernel": "6.1.188",
+      "date": "lts",
+      "android_version": "android14"
+    },
+    {
+      "kernel": "6.1.189",
+      "date": "lts",
+      "android_version": "android14"
+    },
+    {
+      "kernel": "6.1.190",
+      "date": "lts",
+      "android_version": "android14"
+    },
+    {
+      "kernel": "6.1.191",
+      "date": "lts",
+      "android_version": "android14"
+    },
+    {
+      "kernel": "6.1.192",
+      "date": "lts",
+      "android_version": "android14"
     }
   ],
   "6.6": [
@@ -3385,6 +3455,96 @@
       "kernel": "6.6.144",
       "date": "lts",
       "android_version": "android15"
+    },
+    {
+      "kernel": "6.6.145",
+      "date": "lts",
+      "android_version": "android15"
+    },
+    {
+      "kernel": "6.6.146",
+      "date": "lts",
+      "android_version": "android15"
+    },
+    {
+      "kernel": "6.6.147",
+      "date": "lts",
+      "android_version": "android15"
+    },
+    {
+      "kernel": "6.6.148",
+      "date": "lts",
+      "android_version": "android15"
+    },
+    {
+      "kernel": "6.6.149",
+      "date": "lts",
+      "android_version": "android15"
+    },
+    {
+      "kernel": "6.6.150",
+      "date": "lts",
+      "android_version": "android15"
+    },
+    {
+      "kernel": "6.6.151",
+      "date": "lts",
+      "android_version": "android15"
+    },
+    {
+      "kernel": "6.6.152",
+      "date": "lts",
+      "android_version": "android15"
+    },
+    {
+      "kernel": "6.6.153",
+      "date": "lts",
+      "android_version": "android15"
+    },
+    {
+      "kernel": "6.6.154",
+      "date": "lts",
+      "android_version": "android15"
+    },
+    {
+      "kernel": "6.6.155",
+      "date": "lts",
+      "android_version": "android15"
+    },
+    {
+      "kernel": "6.6.156",
+      "date": "lts",
+      "android_version": "android15"
+    },
+    {
+      "kernel": "6.6.157",
+      "date": "lts",
+      "android_version": "android15"
+    },
+    {
+      "kernel": "6.6.158",
+      "date": "lts",
+      "android_version": "android15"
+    },
+    {
+      "kernel": "6.6.159",
+      "date": "lts",
+      "android_version": "android15"
+    },
+    {
+      "kernel": "6.6.160",
+      "date": "lts",
+      "android_version": "android15"
+    },
+    {
+      "kernel": "6.6.161",
+      "date": "lts",
+      "android_version": "android15"
+    },
+    {
+      "kernel": "6.6.162",
+      "date": "lts",
+      "android_version": "android15"
     }
   ],
   "6.12": [
@@ -3752,6 +3912,106 @@
       "kernel": "6.12.97",
       "date": "lts",
       "android_version": "android16"
+    },
+    {
+      "kernel": "6.12.98",
+      "date": "lts",
+      "android_version": "android16"
+    },
+    {
+      "kernel": "6.12.99",
+      "date": "lts",
+      "android_version": "android16"
+    },
+    {
+      "kernel": "6.12.100",
+      "date": "lts",
+      "android_version": "android16"
+    },
+    {
+      "kernel": "6.12.101",
+      "date": "lts",
+      "android_version": "android16"
+    },
+    {
+      "kernel": "6.12.102",
+      "date": "lts",
+      "android_version": "android16"
+    },
+    {
+      "kernel": "6.12.103",
+      "date": "lts",
+      "android_version": "android16"
+    },
+    {
+      "kernel": "6.12.104",
+      "date": "lts",
+      "android_version": "android16"
+    },
+    {
+      "kernel": "6.12.105",
+      "date": "lts",
+      "android_version": "android16"
+    },
+    {
+      "kernel": "6.12.106",
+      "date": "lts",
+      "android_version": "android16"
+    },
+    {
+      "kernel": "6.12.107",
+      "date": "lts",
+      "android_version": "android16"
+    },
+    {
+      "kernel": "6.12.108",
+      "date": "lts",
+      "android_version": "android16"
+    },
+    {
+      "kernel": "6.12.109",
+      "date": "lts",
+      "android_version": "android16"
+    },
+    {
+      "kernel": "6.12.110",
+      "date": "lts",
+      "android_version": "android16"
+    },
+    {
+      "kernel": "6.12.111",
+      "date": "lts",
+      "android_version": "android16"
+    },
+    {
+      "kernel": "6.12.112",
+      "date": "lts",
+      "android_version": "android16"
+    },
+    {
+      "kernel": "6.12.113",
+      "date": "lts",
+      "android_version": "android16"
+    },
+    {
+      "kernel": "6.12.114",
+      "date": "lts",
+      "android_version": "android16"
+    },
+    {
+      "kernel": "6.12.115",
+      "date": "lts",
+      "android_version": "android16"
+    },
+    {
+      "kernel": "6.12.116",
+      "date": "lts",
+      "android_version": "android16"
+    },
+    {
+      "kernel": "6.12.117",
+      "date": "lts",
+      "android_version": "android16"
     }
   ],
   "6.18": [
@@ -3862,6 +4122,126 @@
     },
     {
       "kernel": "6.18.39",
+      "date": "lts",
+      "android_version": "android17"
+    },
+    {
+      "kernel": "6.18.40",
+      "date": "lts",
+      "android_version": "android17"
+    },
+    {
+      "kernel": "6.18.41",
+      "date": "lts",
+      "android_version": "android17"
+    },
+    {
+      "kernel": "6.18.42",
+      "date": "lts",
+      "android_version": "android17"
+    },
+    {
+      "kernel": "6.18.43",
+      "date": "lts",
+      "android_version": "android17"
+    },
+    {
+      "kernel": "6.18.44",
+      "date": "lts",
+      "android_version": "android17"
+    },
+    {
+      "kernel": "6.18.45",
+      "date": "lts",
+      "android_version": "android17"
+    },
+    {
+      "kernel": "6.18.46",
+      "date": "lts",
+      "android_version": "android17"
+    },
+    {
+      "kernel": "6.18.47",
+      "date": "lts",
+      "android_version": "android17"
+    },
+    {
+      "kernel": "6.18.48",
+      "date": "lts",
+      "android_version": "android17"
+    },
+    {
+      "kernel": "6.18.49",
+      "date": "lts",
+      "android_version": "android17"
+    },
+    {
+      "kernel": "6.18.50",
+      "date": "lts",
+      "android_version": "android17"
+    },
+    {
+      "kernel": "6.18.51",
+      "date": "lts",
+      "android_version": "android17"
+    },
+    {
+      "kernel": "6.18.52",
+      "date": "lts",
+      "android_version": "android17"
+    },
+    {
+      "kernel": "6.18.53",
+      "date": "lts",
+      "android_version": "android17"
+    },
+    {
+      "kernel": "6.18.54",
+      "date": "lts",
+      "android_version": "android17"
+    },
+    {
+      "kernel": "6.18.55",
+      "date": "lts",
+      "android_version": "android17"
+    },
+    {
+      "kernel": "6.18.56",
+      "date": "lts",
+      "android_version": "android17"
+    },
+    {
+      "kernel": "6.18.57",
+      "date": "lts",
+      "android_version": "android17"
+    },
+    {
+      "kernel": "6.18.58",
+      "date": "lts",
+      "android_version": "android17"
+    },
+    {
+      "kernel": "6.18.59",
+      "date": "lts",
+      "android_version": "android17"
+    },
+    {
+      "kernel": "6.18.60",
+      "date": "lts",
+      "android_version": "android17"
+    },
+    {
+      "kernel": "6.18.61",
+      "date": "lts",
+      "android_version": "android17"
+    },
+    {
+      "kernel": "6.18.62",
+      "date": "lts",
+      "android_version": "android17"
+    },
+    {
+      "kernel": "6.18.63",
       "date": "lts",
       "android_version": "android17"
     }
