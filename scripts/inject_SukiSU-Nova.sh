@@ -4,8 +4,23 @@
 
 echo ">>> Executing Integration Module for SukiSU-Nova..."
 
+FORGEJO_GIT_URL="https://git.zako.shirkneko.top:20004/shirkneko/SukiSU.git"
+GITHUB_GIT_URL="https://github.com/${UPSTREAM_REPO}.git"
+
 echo ">>> 1. Cloning target branch (${KSU_VARIANT_REF}) from ${KSU_VARIANT_REPO_URL}..."
-git clone -b "${KSU_VARIANT_REF}" "${KSU_VARIANT_REPO_URL}" "${MANAGER_DIR}"
+CLONED_FROM_FORGEJO="false"
+if git clone -b "${KSU_VARIANT_REF}" "${KSU_VARIANT_REPO_URL}" "${MANAGER_DIR}"; then
+    if [ "${KSU_VARIANT_REPO_URL}" = "${FORGEJO_GIT_URL}" ]; then
+        CLONED_FROM_FORGEJO="true"
+    fi
+elif [ "${KSU_VARIANT_REPO_URL}" = "${FORGEJO_GIT_URL}" ]; then
+    echo "  [!] Forgejo clone failed; falling back to GitHub mirror (${GITHUB_GIT_URL})..."
+    rm -rf "${MANAGER_DIR}"
+    git clone -b "${KSU_VARIANT_REF}" "${GITHUB_GIT_URL}" "${MANAGER_DIR}"
+else
+    echo "[-] FATAL: Failed to clone ${KSU_VARIANT_REPO_URL} (${KSU_VARIANT_REF})."
+    exit 1
+fi
 
 ln -sfn "../${MANAGER_DIR}" "common/${MANAGER_DIR}"
 cd common
@@ -18,21 +33,23 @@ echo ">>> Configuring dummy Git identity for transplant and hotfix operations...
 git config --global user.email "runner@github.actions"
 git config --global user.name "GitHub Actions Canary"
 
-FORGEJO_GIT_URL="https://git.zako.shirkneko.top:20004/shirkneko/SukiSU.git"
-GITHUB_GIT_URL="https://github.com/${UPSTREAM_REPO}.git"
-
-echo ">>> 2. Fetching upstream data from Forgejo (with GitHub fallback)..."
-if git fetch --quiet --tags --force "${FORGEJO_GIT_URL}" "${TARGET_BRANCH}" 2>/dev/null; then
+if [ "${CLONED_FROM_FORGEJO}" = "true" ]; then
     ACTIVE_UPSTREAM_URL="${FORGEJO_GIT_URL}"
-    echo "  -> Synced upstream ${TARGET_BRANCH} from Forgejo."
+    UPSTREAM_MAIN_HEAD=$(git rev-parse HEAD)
+    echo ">>> 2. Already cloned directly from Forgejo (${UPSTREAM_MAIN_HEAD:0:7}); skipping redundant fetch."
 else
-    git fetch --quiet --tags --force "${GITHUB_GIT_URL}" "${TARGET_BRANCH}"
-    ACTIVE_UPSTREAM_URL="${GITHUB_GIT_URL}"
-    echo "  -> Synced upstream ${TARGET_BRANCH} from GitHub fallback."
+    echo ">>> 2. Fetching upstream ${TARGET_BRANCH} from Forgejo (with GitHub fallback)..."
+    if git fetch --quiet --tags --force "${FORGEJO_GIT_URL}" "${TARGET_BRANCH}" 2>/dev/null; then
+        ACTIVE_UPSTREAM_URL="${FORGEJO_GIT_URL}"
+        echo "  -> Synced upstream ${TARGET_BRANCH} from Forgejo."
+    else
+        git fetch --quiet --tags --force "${GITHUB_GIT_URL}" "${TARGET_BRANCH}"
+        ACTIVE_UPSTREAM_URL="${GITHUB_GIT_URL}"
+        echo "  -> Synced upstream ${TARGET_BRANCH} from GitHub fallback."
+    fi
+    # Capture live upstream/main HEAD from Step 2 before Step 4 overwrites FETCH_HEAD
+    UPSTREAM_MAIN_HEAD=$(git rev-parse FETCH_HEAD 2>/dev/null || true)
 fi
-
-# Capture live upstream/main HEAD from Step 2 before Step 4 overwrites FETCH_HEAD
-UPSTREAM_MAIN_HEAD=$(git rev-parse FETCH_HEAD 2>/dev/null || true)
 
 if [ "${USE_DYNAMIC_TRANSPLANT}" == "true" ]; then
     echo ">>> 3. Dynamic mode active: Anchoring clone to YAML-provided Upstream Hash (${UPSTREAM_HASH:0:7})..."
@@ -46,7 +63,9 @@ if [ "${USE_DYNAMIC_TRANSPLANT}" == "true" ]; then
     git checkout FETCH_HEAD -- kernel/
 
     git add kernel/
-    git commit -m "chore: transplant built-in SuSFS kernel tree from upstream/builtin"
+    if ! git diff --cached --quiet; then
+        git commit -m "chore: transplant built-in SuSFS kernel tree from upstream/builtin"
+    fi
     UPSTREAM_BRANCH="${TARGET_BRANCH}"
 else
     echo ">>> 3. Stable mode active: Resolving true upstream anchor via HEAD~1..."

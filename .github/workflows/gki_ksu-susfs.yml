@@ -219,11 +219,6 @@ jobs:
               T_BRANCH="main"
               W_FILE="build-manager.yml"
               ;;
-            "ReSukiSU")
-              U_REPO="ReSukiSU/ReSukiSU"
-              T_BRANCH="main"
-              W_FILE="build-manager.yml"
-              ;;
             "KernelSU"|*)
               U_REPO="tiann/KernelSU"
               T_BRANCH="main"
@@ -240,7 +235,11 @@ jobs:
           if [ "${{ inputs.build_channel }}" == "dynamic" ]; then
             echo ">>> Routing ${{ inputs.root_manager }} to Automated Dynamic Transplant..."
             echo "USE_DYNAMIC_TRANSPLANT=true" >> $GITHUB_ENV
-            echo "KSU_VARIANT_REPO_URL=https://github.com/$U_REPO.git" >> $GITHUB_ENV
+            if [ "${{ inputs.root_manager }}" == "SukiSU-Nova" ]; then
+              echo "KSU_VARIANT_REPO_URL=https://git.zako.shirkneko.top:20004/shirkneko/SukiSU.git" >> $GITHUB_ENV
+            else
+              echo "KSU_VARIANT_REPO_URL=https://github.com/$U_REPO.git" >> $GITHUB_ENV
+            fi
             echo "KSU_VARIANT_REF=$T_BRANCH" >> $GITHUB_ENV
             echo "SUSFS_REPO_URL=https://gitlab.com/simonpunk/susfs4ksu.git" >> $GITHUB_ENV
           else
@@ -335,7 +334,7 @@ jobs:
           fi
           
       - name: Resolve Upstream Hash and Artifacts
-        if: inputs.root_manager != 'Stock' && inputs.root_manager != 'ReSukiSU' && (inputs.build_channel == 'dynamic' || inputs.build_channel == 'main')
+        if: inputs.root_manager != 'Stock' && inputs.enable_ksu_susfs == true && (inputs.build_channel == 'dynamic' || inputs.build_channel == 'main')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

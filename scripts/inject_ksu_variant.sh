@@ -12,9 +12,6 @@ case "${VARIANT}" in
     "KernelSU-Next")
         export MANAGER_DIR="KernelSU-Next"
         ;;
-    "ReSukiSU")
-        export MANAGER_DIR="ReSukiSU"
-        ;;
     "SukiSU-Nova" | "KernelSU" | "BakaSU")
         export MANAGER_DIR="KernelSU"
         ;;
