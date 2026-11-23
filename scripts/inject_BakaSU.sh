@@ -25,33 +25,24 @@ git fetch --quiet "https://github.com/${UPSTREAM_REPO}.git" "${TARGET_BRANCH}"
     
 if [ "${USE_DYNAMIC_TRANSPLANT}" == "true" ]; then
     echo ">>> 3. Dynamic mode active: Anchoring pristine clone to YAML-provided Upstream Hash (${UPSTREAM_HASH:0:7})..."
-    
-    # Hard-reset to the exact verified hash before pulling in the sync-up lab
     git reset --hard "${UPSTREAM_HASH}"
 
-    echo ">>> 4. Fetching BakaSU sync-up laboratory..."
-    git remote add bakasu_sync https://github.com/Baka-SU/BakaSU.git
-    git fetch bakasu_sync sync-up
+    # Force SuSFS Kconfig Default
+    echo ">>> Selecting KSU_SUSFS as default hooking method in Kconfig..."
+    sed -i 's/default KSU_TRACEPOINT_HOOK/default KSU_SUSFS/g' kernel/Kconfig
+    sed -i 's/depends on KSU != m/depends on n/g' kernel/Kconfig
 
-    echo ">>> 5. Squashing and merging sync-up features onto pristine upstream tree..."
-    if ! git merge --squash bakasu_sync/sync-up; then
-        echo "[-] CRITICAL: Merge conflict detected during squash merge!"
-        git --no-pager diff --diff-filter=U
-        exit 1
+    git add kernel/Kconfig
+    if ! git diff --cached --quiet; then
+        git commit -m "chore: force KSU_SUSFS default in Kconfig"
+    else
+        echo "  [i] kernel/Kconfig already configured; no commit needed."
     fi
-    
-# Force SuSFS Kconfig Default
-echo ">>> Selecting KSU_SUSFS as default hooking method in Kconfig..."
-sed -i 's/default KSU_TRACEPOINT_HOOK/default KSU_SUSFS/g' kernel/Kconfig
-sed -i 's/depends on KSU != m/depends on n/g' kernel/Kconfig
 
-    git add  kernel/Kconfig
-    git commit -m "Merge susfs features from sync-up"
     UPSTREAM_BRANCH="${TARGET_BRANCH}"
-
 else
     echo ">>> 3. Stable mode active: Calculating exact upstream anchor commit via merge-base..."
-    
+
     # Mathematically finds the divergence point, bypassing any custom emergency commits
     UPSTREAM_HASH=$(git merge-base HEAD FETCH_HEAD)
     echo "  -> Found mathematically true upstream anchor: ${UPSTREAM_HASH:0:7}"
