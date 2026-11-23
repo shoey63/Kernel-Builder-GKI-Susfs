@@ -338,7 +338,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ "${{ inputs.root_manager }}" = "SukiSU-Nova" ]; then
+          echo ">>> Resolving upstream hash for ${{ inputs.root_manager }}..."
+          if [ "${ROOT_MANAGER}" = "SukiSU-Nova" ]; then
               echo ">>> SukiSU-Nova: Resolving bleeding-edge main commit from Forgejo (GitHub fallback)..."
               SHA=$(curl -sL --connect-timeout 10 --max-time 20 \
                 "https://git.zako.shirkneko.top:20004/api/v1/repos/shirkneko/SukiSU/releases/tags/manager-ci" 2>/dev/null \

@@ -1,69 +1,75 @@
 # Universal GKI Kernel Builder CI
 ### (Pure GKI 2.0 only)
 
-Welcome to the Universal GKI Kernel Builder! This repository hosts an automated, highly flexible GitHub Actions CI pipeline designed to compile custom GKI kernels directly from source. 
+Welcome to the Universal GKI Kernel Builder! This repository hosts an automated, highly flexible GitHub Actions CI pipeline designed to compile custom GKI kernels directly from source.
 
-Whether you need a pristine upstream kernel or a heavily modified build featuring custom VFS patches, Kconfig overrides, and systemless integrations, this pipeline builds exactly what you want, right when you want it.
+Whether you need a pristine upstream kernel or a customized build featuring SuSFS, KernelPatch (KPM), NoMount VFS, network optimizations, or spoofed `uname` strings, this pipeline builds exactly what you want, right when you want it.
 
 ## 🚀 Overview
 
-The core philosophy of this project is **Dynamic Generation over Bulk Compilation**. 
+The core philosophy of this project is **Dynamic Generation over Bulk Compilation**.
 
-Unlike massive kernel distribution repositories that compile hundreds of generic permutations on a fixed schedule, this CI is designed to be a personal build engine. When you trigger a workflow, the pipeline dynamically resolves the correct Google manifest branches, fetches the absolute latest source code for your chosen root environment, and integrates custom patches and config overrides on the fly. 
+Unlike massive kernel distribution repositories that compile hundreds of generic permutations on a fixed schedule, this CI is designed to be a personal build engine. When you trigger a workflow, the pipeline resolves the exact Google manifest branch (via `tools/master_kernel_db.json` with automatic LTS fallback), fetches the source for your chosen root environment, and integrates patches and config overrides on the fly.
 
-The result? You get one single, tailor-made kernel artifact and its exact matching manager APK, perfectly synced with the upstream ecosystem.
+The result is a single, tailor-made kernel artifact paired with its matching Manager APK.
 
 ### ✨ Advantages
-* **No Waiting for Updates:** You don't have to wait for a maintainer to trigger a batch build. If Google drops a new GKI update, or KernelSU merges a new commit, you can build it yourself immediately.
-* **Bleeding Edge Option:** The `dynamic` build channel pulls the latest upstream commits for the Linux kernel and your chosen root manager every single time you run it. 
-* **Precision Output:** Instead of sifting through hundreds of zip files to find your device's specific combination, the CI builds exactly what you ask for and packages it cleanly.
-* **Guaranteed Version Matching:** The pipeline automatically fetches the exact Manager APK that matches the root environment source code used during compilation. No more signature mismatches or incompatible userspace apps.
-* **Safe Fallbacks:** If the bleeding-edge upstream commits break compilation, you can instantly toggle the CI to the `stable` channel to build from verified, safe forks.
+* **No Waiting for Updates:** No need to wait for a maintainer to trigger a batch build. When Google drops a new GKI update or a root manager pushes a new commit, you can compile immediately.
+* **Three Build Channels (`stable`, `dynamic`, `main`):** Build from verified, safe forks by default (`stable`), pull bleeding-edge upstream commits on demand (`dynamic`), or build kernel root without SuSFS (`main`).
+* **Precision Output:** Instead of sifting through hundreds of zips, the CI builds only the exact target version and root configuration you request.
+* **Matched Manager APKs:** Automatically resolves and packages the matching Manager APK alongside your kernel build (with multi-source fallbacks where needed, including Forgejo/CNB/GitHub for SukiSU-Nova).
+* **Built-In OTA Validation:** Pre-validates any supplied OTA URL for `payload.bin` compatibility before starting a full kernel compile.
 
 ## ⚙️ Features
-* **Multiple Root Managers:** Native integration support for `KernelSU`, `KernelSU-Next`, `SukiSU-Nova`, `BakaSU`, and `ReSukiSU` (retained as a legacy fallback branch in case of BakaSU instability).
-* **Smart Stock Isolation:** Select `Stock` to guarantee a pristine Google source tree. Combine `Stock` with custom Kconfigs to build an "Enhanced Stock" kernel—perfect for APatch or Magisk users who need specific kernel features baked into the core without conflicting root source code pollution.
-* **SuSFS Integration:** Automated patching and macro injection for SuSFS to enable advanced path hiding, kstat spoofing, and mount masking.
-* **NoMount VFS:** Native integration of maxsteeel's NoMount for advanced kernel-level path redirection. The pipeline dynamically hooks the independent VFS tree directory and outputs a ready-to-flash KernelSU metamodule alongside the kernel.
-* **Performance Networking:** Built-in fragment support for TCP BBR congestion control and FQ_CODEL scheduling to minimize bufferbloat and optimize latency.
-* **Modular Customization Engine:** Intelligently inject custom Kconfig fragments, version-aware `.patch` files, and raw kernel source modifications on demand across versions 5.10 to 6.12.
-* **Flexible Packaging:** Outputs a standard `AnyKernel3` (AK3) flashable zip by default. If you provide a full OTA URL, it will extract, patch, and repack a raw `boot.img` for direct fastboot flashing.
+* **Multiple Root Managers:** Native integration support for `KernelSU-Next`, `SukiSU-Nova`, `BakaSU`, and `KernelSU`.
+* **Automatic KPM Injection (SukiSU-Nova):** Automatically extracts `kpimg`, compiles `kptools` from source, and patches the compiled kernel `Image` for KernelPatch Module (KPM) support.
+* **Smart Stock Isolation:** Select `Stock` to build from a pristine Google source tree without root source code—ideal for APatch or Magisk users who want custom Kconfigs or network tweaks baked in.
+* **SuSFS Integration:** Automated common-side SuSFS patching and rejection handling across GKI branches (`5.10` / Android 12 through `6.18` / Android 17).
+* **NoMount VFS:** Automatically pulls the latest `nomount.c` and `nomount.h` from `maxsteeel/nomount`, wires them into the kernel build, and bundles the latest flashable `NoMount-KSU-Module` artifact.
+* **Network Optimizations:** One-click injection of BBR congestion control, CAKE queuing, TCP FastOpen, and ECN, along with version-aware user patches.
+* **Custom `uname` Identity:** Optionally override the kernel release suffix (`uname -r`) and build timestamp (`uname -v`), or leave blank to preserve the official Google kernel commit hash and timestamp.
+* **Flexible Packaging:** Outputs a ready-to-flash `AnyKernel3` (AK3) zip by default. Supply a direct full OTA ZIP URL to extract the stock `boot.img`, swap in the compiled `Image` with `magiskboot`, and package both the repacked `boot.img` and an AK3 zip.
 
 ---
 
 ## 🛠️ How to Use
 
-To start building your own custom kernels, follow these steps:
-
 ### 1. Fork the Repository
 Click the **Fork** button at the top right of this page to create your own copy of the repository.
 
 ### 2. Add Your Custom Files (Optional)
-If you plan to use the Customization Engine, place your files in the respective directories before running the workflow:
-* **Custom Kconfigs:** Place or un-hash preconfigured flags in `tools/custom.fragment` (e.g., `CONFIG_TCP_CONG_BBR=y`).
-* **User Patches:** Drop any `.patch` files into `tools/user_patches/`. The CI will intelligently apply them based on the kernel version prefix (e.g., `6.1-fix.patch` will only apply to 6.1 builds). *(Note: Blocked when `Stock` is selected)*
-* **User Source:** Drop raw driver files or source overrides into `tools/user_source/` (e.g., placing NoMount source in `tools/user_source/fs/nomount/`). *(Note: Blocked when `Stock` is selected)*
+If you want to customize the build beyond the workflow toggles, place your files in these directories before triggering a run:
+* **Custom Kconfigs:** Edit or uncomment flags in `tools/net_opts.fragment` (e.g., `CONFIG_TCP_CONG_BBR=y`).
+* **User Patches:** Drop `.patch` files into `tools/user_patches/` (applied when **Inject Network Optimizations** is enabled). Patches prefixed with a base version (e.g., `6.1-fix.patch`) apply only to that branch; unprefixed patches apply generically across versions.
+* **User Source:** Drop raw driver files or source overrides into `tools/user_source/` (injected into `common/` when **Inject nomount VFS module** or **Inject Network Optimizations** is enabled). *(Note: NoMount source files are fetched automatically when NoMount is enabled.)*
 
 ### 3. Enable GitHub Actions
-In your forked repository, navigate to the **Actions** tab. Click **"I understand my workflows, go ahead and enable them"**.
+In your forked repository, navigate to the **Actions** tab and click **"I understand my workflows, go ahead and enable them"**.
 
 ### 4. Trigger a Build
-1. On the **Actions** tab, select **Build Custom GKI** from the left sidebar.
+1. On the **Actions** tab, select **Universal GKI Kernel Builder CI** from the left sidebar.
 2. Click the **Run workflow** dropdown on the right side of the screen.
-3. Fill out the configuration parameters for your build:
+3. Configure your build parameters:
 
 | Parameter | Description |
 | :--- | :--- |
-| **Build Channel** | Choose `dynamic` (latest upstream commits) or `stable` (fallback to verified forks if dynamic fails). |
-| **Build Name** | A custom name for your output artifact (e.g., `Pixel_10_Pro_Testing`). |
-| **Kernel Version** | The exact GKI target version you wish to build (e.g., `6.12.11`). |
-| **Root Environment** | Select your preferred root manager from the dropdown list (`KernelSU`, `KernelSU-Next`, `SukiSU-Nova`, `BakaSU`, `ReSukiSU`, or `Stock`). |
-| **Integrate Root Manager and SUSFS?** | Check to inject Kernel root and SUSFS. *(Ignored if `Stock` is selected).* |
-| **Inject NoMount VFS?** | Check to dynamically wire NoMount source directories into the VFS Kbuild tree and download the NoMount metamodule. |
-| **Enable Performance Networking?** | Check to apply custom network Kconfigs and version-aware `.patch` files to the kernel source tree. |
-| **OTA URL (Optional)** | Leave blank to output an `AnyKernel3` zip. Provide a direct link to a full OTA zip to output a pre-patched `boot.img`. |
+| **Build Channel** | Choose `stable` (default — verified fork branches with SuSFS), `dynamic` (bleeding-edge upstream commits with SuSFS), or `main` (kernel root without SuSFS). |
+| **Build Name** | A custom label for the workflow run and OTA-repacked artifact zip (e.g., `Pixel_9_Pro_6.1.162`). |
+| **Kernel Version** | The target GKI version to build (e.g., `6.1.162`, `6.12.81`). Mapped via `tools/master_kernel_db.json`, falling back to the corresponding LTS branch for `5.10`–`6.18`. |
+| **Root Environment** | Choose `KernelSU-Next`, `SukiSU-Nova`, `BakaSU`, `KernelSU`, or `Stock`. |
+| **Integrate Root Manager and SUSFS?** | Enabled by default. Injects the selected root manager and SuSFS *(ignored when `Stock` is selected; select the `main` channel to integrate root without SuSFS)*. |
+| **Inject Network Optimizations (BBR, CAKE, FastOpen, ECN)** | Enables network optimization configs, injects `tools/user_source/`, and applies matching patches from `tools/user_patches/`. |
+| **Inject nomount VFS module** | Fetches the latest NoMount kernel source, compiles it into the kernel, and downloads the latest `NoMount-KSU-Module` release artifact. |
+| **Full OTA ZIP URL (Optional)** | Leave blank to output a standalone `AnyKernel3` zip (`<RootManager>-<Version>-AK3`). Provide a direct full OTA ZIP URL to output a repacked `boot.img`, an AK3 zip, and `repack_metadata.txt`. |
+| **Custom `uname -r` (Optional)** | Override the kernel release hash/build suffix (e.g., `6.1.162-android14-11-g9dd05ae3a1de-ab16261587`). Leave blank to use the synced Google commit hash. |
+| **Custom `uname -v` (Optional)** | Override the kernel build timestamp using a `uname -v` string (e.g., `#1 SMP PREEMPT Thu Sep  3 03:59:00 UTC 2026`) or Unix epoch. Leave blank to use the synced Google commit date. |
 
 4. Click **Run workflow**.
 
 ### 5. Download Your Artifacts
-Once the CI pipeline completes successfully, scroll to the bottom of the workflow summary page. Under the **Artifacts** section, you will find your compiled kernel (either an AK3 zip or a zip containing a repacked boot image plus an AK3 zip), your NoMount metamodule (if enabled), and the exact Manager APK required to control it. Download, flash via Kernel Flasher or custom recovery, and enjoy!
+Once the workflow completes, scroll to the **Artifacts** section at the bottom of the run summary page:
+* **Kernel Artifact:** Either `<RootManager>-<KernelVersion>-AK3` (standalone AnyKernel3 zip) or `<BuildName>` (containing the repacked `boot.img`, AK3 zip, and `repack_metadata.txt` when an OTA URL is provided).
+* **Manager APK (`<RootManager>-Manager`):** The matching Manager APK for your chosen root environment.
+* **NoMount Module (`NoMount-KSU-Module`):** Included whenever NoMount VFS is enabled.
+
+Download your artifacts, flash via Kernel Flasher, custom recovery, or fastboot, and enjoy!
