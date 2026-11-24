@@ -21,7 +21,7 @@ if [ "$VARIANT" == "SukiSU-Nova" ]; then
 
     UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
     CNB_BASE="https://cnb.cool"
-    CNB_TAG_URL="${CNB_BASE}/shirkneko/sukisu-result/-/releases/tag/manager-ci"
+    CNB_TAG_URL="${CNB_BASE}/shirkneko/sukisu-release/-/releases/tag/manager-ci"
     FORGEJO_JSON=""
 
     # Retry once to survive ShirkNeko's cnb_clear_assets rotation window
@@ -32,7 +32,7 @@ if [ "$VARIANT" == "SukiSU-Nova" ]; then
         CNB_BODY=$(echo "$CNB_RESP" | sed '$d')
 
         CNB_PATH=$(echo "$CNB_BODY" \
-          | grep -oE '/shirkneko/sukisu-result/-/releases/download/manager-ci/[^"'\'' <>]+arm64-v8a[^"'\'' <>]*\.apk' \
+          | grep -oE '/shirkneko/sukisu-release/-/releases/download/manager-ci/[^"'\'' <>]+arm64-v8a[^"'\'' <>]*\.apk' \
           | grep -vi 'debug' | head -n 1 || true)
 
         # If CNB HTML was WAF-blocked or JS-rendered, construct direct download URL from Forgejo's manager-ci title
@@ -49,7 +49,7 @@ if [ "$VARIANT" == "SukiSU-Nova" ]; then
 
             if [ -n "$FJ_CODE" ]; then
                 echo "  -> Trying direct CNB download using Forgejo title ('${FJ_TITLE}' -> v${FJ_TAG}_${FJ_CODE})..."
-                CNB_PATH="/shirkneko/sukisu-result/-/releases/download/manager-ci/SukiSU_Nova_v${FJ_TAG}_${FJ_CODE}-arm64-v8a-release.apk"
+                CNB_PATH="/shirkneko/sukisu-release/-/releases/download/manager-ci/SukiSU_Nova_v${FJ_TAG}_${FJ_CODE}-arm64-v8a-release.apk"
             fi
         fi
 

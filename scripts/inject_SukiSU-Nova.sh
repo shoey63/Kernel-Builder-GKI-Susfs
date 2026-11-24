@@ -183,12 +183,12 @@ APK_FILENAME=""
 for attempt in 1 2; do
     CNB_RESP=$(curl -sSL -A "$UA" --retry 3 --connect-timeout 10 --max-time 25 \
         -w "\nHTTP_CODE:%{http_code}" \
-        "https://cnb.cool/shirkneko/sukisu-result/-/releases/tag/manager-ci" 2>&1 || true)
+        "https://cnb.cool/shirkneko/sukisu-release/-/releases/tag/manager-ci" 2>&1 || true)
     CNB_CODE=$(echo "$CNB_RESP" | tail -n 1 | sed 's/^HTTP_CODE://')
     CNB_BODY=$(echo "$CNB_RESP" | sed '$d')
 
     APK_FILENAME=$(echo "$CNB_BODY" \
-        | grep -oE '/shirkneko/sukisu-result/-/releases/download/manager-ci/[^"'\'' <>]+arm64-v8a[^"'\'' <>]*\.apk' \
+        | grep -oE '/shirkneko/sukisu-release/-/releases/download/manager-ci/[^"'\'' <>]+arm64-v8a[^"'\'' <>]*\.apk' \
         | grep -vi 'debug' | head -n 1 | xargs -r basename 2>/dev/null || true)
 
     [ -n "$APK_FILENAME" ] && break
