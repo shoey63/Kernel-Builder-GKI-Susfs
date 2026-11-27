@@ -511,47 +511,70 @@ jobs:
           bash ./scripts/build_kernel.sh
   
       - name: Inject KernelPatch (KPM) Engine
-        if: inputs.root_manager == 'SukiSU-Nova'
+        if: inputs.root_manager == 'SukiSU-Nova' && inputs.enable_ksu_susfs == true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo ">>> Fetching latest SukiSU-Nova APK to extract kpimg core..."
-          SUKI_API="https://api.github.com/repos/SukiSU-Nova/SukiSU-Nova/releases/latest"
-          
-          # 1. Try authenticated API request first to avoid rate limits
-          APK_URL=$(curl -s -H "Authorization: token $GH_TOKEN" "$SUKI_API" | jq -r '.assets[]? | select(.name | endswith(".apk")) | .browser_download_url' | head -n 1)
-          
-          # 2. Fallback to HTML scraping if API fails or returns null
-          if [ -z "$APK_URL" ] || [ "$APK_URL" = "null" ]; then
-              echo "[-] API request failed. Falling back to HTML scraping..."
-              APK_URL=$(curl -s "https://github.com/SukiSU-Nova/SukiSU-Nova/releases/latest" | grep -oE 'href="/SukiSU-Nova/SukiSU-Nova/releases/download/[^/]+/[^"]+\.apk"' | head -n 1 | sed 's/^href="//;s/"$//')
-              [ -n "$APK_URL" ] && APK_URL="https://github.com$APK_URL"
+          # Extract kpimg from CNB raw manager-ci APK (GitHub fallback) and build kptools
+          UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+          CNB_MANIFEST_URL="https://cnb.cool/sukisu-nova/Release/-/git/raw/manager-ci/manifest.json"
+
+          echo ">>> Fetching SukiSU-Nova APK to extract kpimg (CNB raw primary, GitHub fallback)..."
+          APK_URL=$(curl -sSL -A "$UA" -H "Accept: application/json" --retry 3 --connect-timeout 10 --max-time 25 "$CNB_MANIFEST_URL" 2>/dev/null \
+            | jq -r '[.assets[]? | select(.name | test("\\.apk$")) | select(.name | test("(?i)(debug|armeabi-v7a|x86_64|riscv64)") | not)] | (map(select(.name | test("arm64-v8a"))) + .) | .[0].browser_download_url // empty' 2>/dev/null || true)
+
+          KPIMG_OK="false"
+          if [ -n "$APK_URL" ]; then
+              echo "  -> Trying CNB raw APK: $APK_URL"
+              if curl -sSL -A "$UA" --retry 3 --connect-timeout 10 --max-time 120 -o manager.apk "$APK_URL" \
+                 && [ -s manager.apk ] \
+                 && unzip -jo manager.apk "assets/kpm/kpimg"; then
+                  KPIMG_OK="true"
+                  echo "  -> Extracted kpimg from CNB raw APK."
+              else
+                  echo "  [!] CNB raw APK download or kpimg extraction failed; falling back to GitHub..."
+                  rm -f manager.apk kpimg
+              fi
           fi
-          
-          if [ -z "$APK_URL" ] || [ "$APK_URL" = "null" ]; then
-              echo "[-] FATAL: Could not resolve SukiSU-Nova APK download URL."
-              exit 1
+
+          if [ "$KPIMG_OK" != "true" ]; then
+              SUKI_API="https://api.github.com/repos/SukiSU-Nova/SukiSU-Nova/releases/latest"
+              APK_URL=$(curl -s -H "Authorization: token $GH_TOKEN" "$SUKI_API" \
+                | jq -r '.assets[]? | select(.name | endswith(".apk")) | .browser_download_url' | head -n 1 || true)
+
+              if [ -z "$APK_URL" ] || [ "$APK_URL" = "null" ]; then
+                  echo "  [!] GitHub API failed; falling back to HTML scraping..."
+                  APK_URL=$(curl -s "https://github.com/SukiSU-Nova/SukiSU-Nova/releases/latest" \
+                    | grep -oE 'href="/SukiSU-Nova/SukiSU-Nova/releases/download/[^/]+/[^"]+\.apk"' | head -n 1 | sed 's/^href="//;s/"$//' || true)
+                  [ -n "$APK_URL" ] && APK_URL="https://github.com$APK_URL"
+              fi
+
+              if [ -z "$APK_URL" ] || [ "$APK_URL" = "null" ]; then
+                  echo "[-] FATAL: Could not resolve SukiSU-Nova APK download URL from CNB or GitHub."
+                  exit 1
+              fi
+
+              echo "  -> Downloading fallback GitHub APK: $APK_URL"
+              curl -sSL --retry 3 --connect-timeout 10 --max-time 120 -o manager.apk "$APK_URL"
+              unzip -jo manager.apk "assets/kpm/kpimg" || { echo "[-] FATAL: Failed to extract kpimg from APK"; exit 1; }
           fi
-          
-          echo "  -> Downloading APK from: $APK_URL"
-          wget -qO manager.apk "$APK_URL"
-          
-          echo "  -> Extracting kpimg..."
-          unzip -j manager.apk "assets/kpm/kpimg" || { echo "[-] FATAL: Failed to extract kpimg from APK"; exit 1; }
-          
-          echo ">>> Compiling Linux patcher tool from ShirkNeko source..."
-          git clone --depth 1 https://github.com/ShirkNeko/SukiSU_KernelPatch_patch.git kp_src
-          cd kp_src/tools
-          make
-          # The Makefile outputs a binary named 'kptools'
-          cp kptools ../../kp
-          cd ../../
-          chmod +x kp
-          
+
+          echo "::group::Compiling kptools from source (Forgejo primary, GitHub fallback)"
+          rm -rf kp_src
+          if ! git clone --depth 1 https://git.zako.shirkneko.top:20004/shirkneko/SukiSU_KernelPatch_patch.git kp_src; then
+              echo "  [!] Forgejo clone failed; falling back to GitHub mirror..."
+              rm -rf kp_src
+              git clone --depth 1 https://github.com/SukiSU-Nova/SukiSU_KernelPatch_patch.git kp_src
+          fi
+          make -C kp_src/tools
+          echo "::endgroup::"
+          cp kp_src/tools/kptools ./kp
+          chmod +x ./kp
+
           echo ">>> Patching raw kernel Image..."
           ./kp -p -i out/Image -k kpimg -o out/Image-patched
           mv out/Image-patched out/Image
-          
+
           echo ">>> KPM Engine successfully injected into CI pipeline!"
 
       - name: Pull stock boot.img from OTA
