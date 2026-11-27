@@ -53,7 +53,7 @@ fi
 
 if [ "${USE_DYNAMIC_TRANSPLANT}" == "true" ]; then
     echo ">>> 3. Dynamic mode active: Anchoring clone to YAML-provided Upstream Hash (${UPSTREAM_HASH:0:7})..."
-    git reset --hard "${UPSTREAM_HASH}"
+    git cat-file -e "${UPSTREAM_HASH}^{commit}"
 
     echo ">>> 4. Fetching upstream builtin branch..."
     git fetch --quiet "${ACTIVE_UPSTREAM_URL}" builtin || git fetch --quiet "${GITHUB_GIT_URL}" builtin
@@ -71,8 +71,11 @@ else
     echo ">>> 3. Stable mode active: Resolving true upstream anchor via HEAD~1..."
 
     # Step back past the local 'chore: transplant...' commit to get the true upstream anchor
+if [ "${BUILD_CHANNEL:-}" = "main" ]; then
+    UPSTREAM_HASH=$(git rev-parse HEAD)
+else
     UPSTREAM_HASH=$(git rev-parse HEAD~1)
-    echo "  -> Locked stable anchor: ${UPSTREAM_HASH:0:7}"
+fi
 
     # Export it so fetch_manager.sh can use it later
     echo "UPSTREAM_HASH=${UPSTREAM_HASH}" >> "$GITHUB_ENV"
@@ -179,23 +182,23 @@ CALCULATED_TAG=$(git describe --tags --abbrev=0 --match "v[0-9]*" "${UPSTREAM_HA
 CALCULATED_TAG="${CALCULATED_TAG:-3.0.0}"
 
 # 2. Try CNB manager-ci first (with 1 retry for cnb_clear_assets rotation window)
+CNB_MANIFEST_URL="https://cnb.cool/sukisu-nova/Release/-/git/raw/manager-ci/manifest.json"
 APK_FILENAME=""
 for attempt in 1 2; do
-    CNB_RESP=$(curl -sSL -A "$UA" --retry 3 --connect-timeout 10 --max-time 25 \
-        -w "\nHTTP_CODE:%{http_code}" \
-        "https://cnb.cool/shirkneko/sukisu-release/-/releases/tag/manager-ci" 2>&1 || true)
+    CNB_RESP=$(curl -sSL -A "$UA" -H "Accept: application/json" --retry 3 --connect-timeout 10 --max-time 25 \
+        -w "\nHTTP_CODE:%{http_code}" "$CNB_MANIFEST_URL" 2>&1 || true)
     CNB_CODE=$(echo "$CNB_RESP" | tail -n 1 | sed 's/^HTTP_CODE://')
     CNB_BODY=$(echo "$CNB_RESP" | sed '$d')
 
-    APK_FILENAME=$(echo "$CNB_BODY" \
-        | grep -oE '/shirkneko/sukisu-release/-/releases/download/manager-ci/[^"'\'' <>]+arm64-v8a[^"'\'' <>]*\.apk' \
-        | grep -vi 'debug' | head -n 1 | xargs -r basename 2>/dev/null || true)
+    APK_FILENAME=$(echo "$CNB_BODY" | jq -r '
+        [.assets[]? | select(.name | test("\\.apk$")) | select(.name | test("(?i)(debug|armeabi-v7a|x86_64|riscv64)") | not)]
+        | (map(select(.name | test("arm64-v8a"))) + .)
+        | .[0].name // empty
+    ' 2>/dev/null || true)
 
     [ -n "$APK_FILENAME" ] && break
-    echo "  [!] [Attempt ${attempt}/2] CNB scrape empty (HTTP ${CNB_CODE})."
-    if [ "$attempt" -lt 2 ]; then
-        sleep 15
-    fi
+    echo "  [!] [Attempt ${attempt}/2] CNB raw manifest scrape empty (HTTP ${CNB_CODE})."
+    [ "$attempt" -lt 2 ] && sleep 15
 done
 
 # 3. Fallback to Forgejo releases if CNB is unavailable

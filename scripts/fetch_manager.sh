@@ -17,27 +17,33 @@ echo ">>> Searching $REPO for a Release Manager..."
 # ==========================================
 if [ "$VARIANT" == "SukiSU-Nova" ]; then
     mkdir -p manager_apk
-    echo ">>> SukiSU-Nova detected: Querying CNB manager-ci for bleeding-edge arm64-v8a APK..."
+    echo ">>> SukiSU-Nova detected: Querying CNB raw manifest (manager-ci) for arm64-v8a APK..."
 
     UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-    CNB_BASE="https://cnb.cool"
-    CNB_TAG_URL="${CNB_BASE}/shirkneko/sukisu-release/-/releases/tag/manager-ci"
+    CNB_RAW_BASE="https://cnb.cool/sukisu-nova/Release/-/git/raw/manager-ci"
+    CNB_MANIFEST_URL="${CNB_RAW_BASE}/manifest.json"
     FORGEJO_JSON=""
 
-    # Retry once to survive ShirkNeko's cnb_clear_assets rotation window
+    # Retry once in case a rolling snapshot force-push is mid-flight
     for attempt in 1 2; do
-        CNB_RESP=$(curl -sSL -A "$UA" --retry 3 --connect-timeout 10 --max-time 30 \
-          -w "\nHTTP_CODE:%{http_code}" "$CNB_TAG_URL" 2>&1 || true)
+        CNB_RESP=$(curl -sSL -A "$UA" -H "Accept: application/json" --retry 3 --connect-timeout 10 --max-time 30 \
+          -w "\nHTTP_CODE:%{http_code}" "$CNB_MANIFEST_URL" 2>&1 || true)
         CNB_CODE=$(echo "$CNB_RESP" | tail -n 1 | sed 's/^HTTP_CODE://')
         CNB_BODY=$(echo "$CNB_RESP" | sed '$d')
 
-        CNB_PATH=$(echo "$CNB_BODY" \
-          | grep -oE '/shirkneko/sukisu-release/-/releases/download/manager-ci/[^"'\'' <>]+arm64-v8a[^"'\'' <>]*\.apk' \
-          | grep -vi 'debug' | head -n 1 || true)
+        CNB_ENTRY=$(echo "$CNB_BODY" | jq -r '
+          [.assets[]? | select(.name | test("\\.apk$")) | select(.name | test("(?i)(debug|armeabi-v7a|x86_64|riscv64)") | not)]
+          | (map(select(.name | test("arm64-v8a"))) + .)
+          | .[0] | if . then "\(.name)|\(.browser_download_url)" else empty end
+        ' 2>/dev/null || true)
 
-        # If CNB HTML was WAF-blocked or JS-rendered, construct direct download URL from Forgejo's manager-ci title
-        if [ -z "$CNB_PATH" ]; then
-            echo "  [!] [Attempt ${attempt}/2] CNB HTML scrape empty (HTTP ${CNB_CODE}). Snippet: $(echo "$CNB_BODY" | tr -d '\r\n' | head -c 120)"
+        APK_NAME=""
+        APK_URL=""
+        if [ -n "$CNB_ENTRY" ]; then
+            APK_NAME=$(echo "$CNB_ENTRY" | cut -d'|' -f1)
+            APK_URL=$(echo "$CNB_ENTRY" | cut -d'|' -f2)
+        else
+            echo "  [!] [Attempt ${attempt}/2] CNB raw manifest empty/invalid (HTTP ${CNB_CODE}). Snippet: $(echo "$CNB_BODY" | tr -d '\r\n' | head -c 120)"
             if [ -z "$FORGEJO_JSON" ]; then
                 FORGEJO_JSON=$(curl -sL --retry 3 --connect-timeout 10 --max-time 30 \
                   "https://git.zako.shirkneko.top:20004/api/v1/repos/shirkneko/SukiSU/releases" 2>/dev/null || true)
@@ -48,19 +54,18 @@ if [ "$VARIANT" == "SukiSU-Nova" ]; then
             FJ_TAG="${FJ_TAG:-3.0.0}"
 
             if [ -n "$FJ_CODE" ]; then
-                echo "  -> Trying direct CNB download using Forgejo title ('${FJ_TITLE}' -> v${FJ_TAG}_${FJ_CODE})..."
-                CNB_PATH="/shirkneko/sukisu-release/-/releases/download/manager-ci/SukiSU_Nova_v${FJ_TAG}_${FJ_CODE}-arm64-v8a-release.apk"
+                echo "  -> Trying direct CNB raw URL using Forgejo title ('${FJ_TITLE}' -> v${FJ_TAG}_${FJ_CODE})..."
+                APK_NAME="SukiSU_Nova_v${FJ_TAG}_${FJ_CODE}-arm64-v8a-release.apk"
+                APK_URL="${CNB_RAW_BASE}/apks/${APK_NAME}"
             fi
         fi
 
-        if [ -n "$CNB_PATH" ]; then
-            APK_NAME="$(basename "$CNB_PATH")"
-            APK_URL="${CNB_BASE}${CNB_PATH}"
-            echo "  -> [Attempt ${attempt}/2] Fetching CNB APK: $APK_NAME"
+        if [ -n "$APK_URL" ]; then
+            echo "  -> [Attempt ${attempt}/2] Fetching CNB raw APK: $APK_NAME"
             CNB_DL_CODE=$(curl -sSL -A "$UA" --retry 3 --connect-timeout 10 --max-time 120 \
               -w "%{http_code}" -o "manager_apk/${APK_NAME}" "$APK_URL" 2>/dev/null || echo "000")
             if [ "$CNB_DL_CODE" = "200" ] && [ -s "manager_apk/${APK_NAME}" ] && unzip -tq "manager_apk/${APK_NAME}" >/dev/null 2>&1; then
-                echo ">>> Manager successfully staged from CNB!"
+                echo ">>> Manager successfully staged from CNB raw!"
                 ls -1 manager_apk/
                 exit 0
             fi
